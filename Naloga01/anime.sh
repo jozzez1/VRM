@@ -38,8 +38,9 @@ mencoder "mf://*.jpeg" -mf w=600:h=400:fps=${FPS}:type=jpg -ovc lavc -lavcopts v
 
 rm *.jpeg
 cp $1.avi $CWD
-rm -r $DIR
 
-mplayer $CWD/$1.avi
+cd $CWD
+rm -rf $DIR
+mplayer $1.avi
 
 exit 0

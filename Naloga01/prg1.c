@@ -59,7 +59,7 @@ int main (int argc, char ** argv)
 
 		       case 'o':
 			       dat = (char *) malloc (40 * sizeof (char));
-			       dat = optarg;
+			       strcpy (dat, optarg);
 			       break;
 
 		       case 'd':
@@ -104,14 +104,19 @@ int main (int argc, char ** argv)
 
 	// allocate internal varibales
 	init (u, h, t, a, Lambda, N, M, s);
+
 	strcpy (u->dat, dat);
 
+	free (dat);
 	// solve the problem ...
 	if (dflag == 0)
 	{
 		u->fout = fopen (file1, "w");
+
 		solver (u);
 		printf ("Writing in %s\n", file1);
+
+		fclose (u->fout);
 		// deallocate the space
 		destroy (u);
 	}
@@ -133,7 +138,6 @@ int main (int argc, char ** argv)
 		system (animation);
 	}
 
-	free (dat);
-
 	return 0;
 }
+

@@ -58,7 +58,6 @@ void shit (hod * u)
 	sprintf (dat1, "%s/%05d.txt", u->dat, u->n);
 
 	printf ("%s\n", dat1);
-	fclose (u->fout);
 	u->fout = fopen (dat1, "w");
 
 	int i;
@@ -72,8 +71,9 @@ void shit (hod * u)
 
 		fprintf (u->fout, "% 15lf % 15lf % 15lf\n", u->h*(i - u->M/2), r, V);
 	}
-
 	fprintf (u->fout, "\n");
+
+	fclose (u->fout);
 }
 
 // potential calc
@@ -336,8 +336,6 @@ void destroy (hod * u)
 	gsl_matrix_complex_free (u->B);
 
 	gsl_permutation_free (u->p);
-
-	fclose (u->fout);
 
 	free (u);
 }
