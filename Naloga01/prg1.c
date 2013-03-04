@@ -107,7 +107,6 @@ int main (int argc, char ** argv)
 
 	u->fout = fopen (file1, "w");
 	strcpy (u->dat, dat);
-	free (dat);
 
 	// solve the problem ...
 	if (dflag == 0)
@@ -123,6 +122,9 @@ int main (int argc, char ** argv)
 		char * animation = (char *) malloc (60 * sizeof(char));
 		sprintf (animation, "./anime.sh %s", u->dat);
 
+		int status;
+		status = mkdir (u->dat, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+
 		shitter (u);
 		printf ("Created the %s directory\n", u->dat);
 		// destroy the sonnuvabitch
@@ -131,5 +133,8 @@ int main (int argc, char ** argv)
 		// call the animation zsh script
 		system (animation);
 	}
+
+	free (dat);
+
 	return 0;
 }

@@ -40,4 +40,6 @@ rm *.jpeg
 cp $1.avi $CWD
 rm -r $DIR
 
+mplayer $CWD/$1.avi
+
 exit 0

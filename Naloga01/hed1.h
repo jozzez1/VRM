@@ -61,8 +61,6 @@ void shit (hod * u)
 	fclose (u->fout);
 	u->fout = fopen (dat1, "w");
 
-	mkdir (u->dat, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
-
 	int i;
 	for (i = 0; i <= u->M-1; i++)
 	{
