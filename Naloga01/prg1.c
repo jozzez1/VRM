@@ -104,13 +104,12 @@ int main (int argc, char ** argv)
 
 	// allocate internal varibales
 	init (u, h, t, a, Lambda, N, M, s);
-
-	u->fout = fopen (file1, "w");
 	strcpy (u->dat, dat);
 
 	// solve the problem ...
 	if (dflag == 0)
 	{
+		u->fout = fopen (file1, "w");
 		solver (u);
 		printf ("Writing in %s\n", file1);
 		// deallocate the space
