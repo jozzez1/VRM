@@ -20,6 +20,7 @@ int main (int argc, char ** argv)
 	int N = 100,
 	    M = 100,
 	    s = 0,
+	    y = 0,
 	    dflag = 0,
 	    arg;
 
@@ -27,7 +28,7 @@ int main (int argc, char ** argv)
 
 	opterr = 1;
 
-	while ((arg = getopt (argc, argv, "t:h:a:L:N:M:s:o:ld")) != -1)
+	while ((arg = getopt (argc, argv, "t:h:a:L:N:M:s:o:ldy")) != -1)
 	{
 	       switch (arg)
 	       {
@@ -59,6 +60,10 @@ int main (int argc, char ** argv)
 			       s = atoi (optarg);
 			       break;
 
+		       case 'y':
+			       y = 1;
+			       break;
+
 		       case 'o':
 			       dat = (char *) malloc (40 * sizeof (char));
 			       strcpy (dat, optarg);
@@ -78,7 +83,8 @@ int main (int argc, char ** argv)
 			       printf (" -N <int> (100) -- number of time-grains\n");
 			       printf (" -M <int> (100) -- number of space-grains\n");
 			       printf (" -s [0,1,2] (0)-- eigen function mode\n");
-			       printf (" -d (no) -- animation mode\n");
+			       printf (" -d (no) -- animation mode (opposite is plotting)\n");
+			       printf (" -y (no) -- save the end file");
 			       printf (" -o <char *> -- name of output file\n\n");
 			       exit (EXIT_SUCCESS);
 
@@ -115,18 +121,24 @@ int main (int argc, char ** argv)
 	{
 		u->fout = fopen (file1, "w");
 
+		char * savenplot = (char *) malloc (40 * sizeof(char));
+		sprintf (savenplot, "./plot.sh %s %d", u->dat, y);
+
 		solver (u);
 		printf ("Writing in %s\n", file1);
 
 		fclose (u->fout);
 		// deallocate the space
 		destroy (u);
+
+		system (savenplot);
+		free (savenplot);
 	}
 
 	if (dflag == 1)
 	{
 		char * animation = (char *) malloc (60 * sizeof(char));
-		sprintf (animation, "./anime.sh %s", u->dat);
+		sprintf (animation, "./anime.sh %s %d", u->dat, y);
 
 		int status;
 		status = mkdir (u->dat, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
@@ -138,6 +150,7 @@ int main (int argc, char ** argv)
 
 		// call the animation zsh script
 		system (animation);
+		free (animation);
 	}
 
 	return 0;

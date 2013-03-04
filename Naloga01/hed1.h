@@ -43,7 +43,7 @@ void dump (hod * u)
 	for (i = 0; i <= u->M-1; i++)
 	{
 		gsl_complex a = gsl_vector_complex_get (u->psi0, i);
-		fprintf (u->fout, "% lf % lf % lf % lf\n",
+		fprintf (u->fout, "% 15lf % 15lf % 15lf % 15lf\n",
 				u->n*u->t, u->h*(i - u->M/2), a.dat[0], a.dat[1]);
 	}
 	fprintf (u->fout, "\n");
