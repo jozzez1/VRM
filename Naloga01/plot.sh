@@ -24,8 +24,10 @@ else
 	  set xlabel \"t\";
 	  set cblabel \"|u(x)|^2\";
 	  set view map;
-	  set output \"$1.eps\";
+	  set output \"$1.tex\";
 	  splot \"$1.txt\" u 1:2:"'($3**2 + $4**2)'" w pm3d title \"|u(x)|^2\" " | gnuplot
+
+	  rm $1.txt
 
 fi
 

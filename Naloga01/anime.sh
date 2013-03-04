@@ -6,6 +6,7 @@
 CWD=`pwd`
 DIR=`pwd`/$1
 ANI=$DIR/animation
+SAVE=$2
 COUNT=0
 
 NUMBER=`ls $DIR | wc -l`
@@ -29,7 +30,7 @@ do
 	  set yrange [0:1];
 	  set output \"$FILE.jpeg\";
 	  plot \"$DIR/$FILE\" u 1:2 w l lt 1 title \"|u(x)|^2\" axes x1y1, \
-		 \"$DIR/$FILE\" u 1:3 w l lt 3 title \"V\" axes x1y2 " | gnuplot >> log.txt
+		 \"$DIR/$FILE\" u 1:3 w l lt 3 title \"V\" axes x1y2 " | gnuplot
 
 	  (( COUNT ++ ))
 done
@@ -43,8 +44,10 @@ cd $CWD
 rm -rf $DIR
 mplayer $1.avi
 
-if [ ${2} -eq 0 ]; then
+if [ "$SAVE" == "0" ]; then
+
 	rm $1.avi
+
 fi
 
 exit 0
