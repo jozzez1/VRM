@@ -5,6 +5,8 @@
 #include <string.h>
 #include <ctype.h> // for integer conversion
 #include <stdlib.h>
+#include <sys/stat.h>  // mkdir ()
+#include <sys/types.h> // mkdir ()
 #include <unistd.h>
 #include "hed1.h"
 
