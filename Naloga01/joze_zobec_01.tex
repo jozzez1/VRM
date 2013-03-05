@@ -1,0 +1,153 @@
+\documentclass[a4 paper, 12pt]{article}
+\usepackage[slovene]{babel}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[small]{caption}
+\usepackage[pdftex]{graphicx}
+\usepackage{amssymb, amsmath, fullpage}
+
+\begin{document}
+
+\begin{center}
+\textsc{Višje računske metode}\\
+\textsc{2012/13}\\[0.5cm]
+\textbf{1. naloga -- časovni razvoj Schr\" odingerjeve enačbe}
+\end{center}
+\begin{flushright}
+\textbf{Jože Zobec}
+\end{flushright}
+
+\section{Uvod}
+
+Pri tej nalogi smo delali z diskretnomi metodami. To pomeni, da smo za naš problem prostor
+predstavili na mreži in na tej mreži aproksimirali odvode. Aproksimacije odvodov s končnimi
+diferencami so sicer lahko nestabilne, saj za majhne korake divergirajo. Vendar, če vzamemo
+dovolj človeške vrednosti, nas to ne bo preveč motilo.
+
+Na voljo imamo več metod. Sam sem preizkusil le eno, to je implicitno metodo za reševanje.
+Implicitne metode so v veliki večini primerov stabilnejše, zato nisem tratil časa s tem, da bi
+to resnico znova\footnote{tj. kot pri Matematično-fizikalnem praktikuumu in Modelski analizi, Numerične metode \ldots}
+potrdil.
+
+Čas sem raje vložil v optimizacijo svojega programa.
+
+Oznake so iste, kot v profesorjevi skripti, razen če eksplicitno piše kako drugače. Tako je
+na primer $V_m = V(mh)$ in $V = V(x)$ je potencial, $h$ je krajevni korak itd.
+
+\section{Naloga}
+
+Imamo potencial
+
+\begin{equation}
+	V(x) = \frac{1}{2}x^2 + \lambda x^4,
+\end{equation}
+
+za začetno stanje pa vzamemo eno od lastnih stanj harmonskega oscilatorja. Problem je
+zanimivejši, seveda, če ta valovni paket izmaknemo iz ravnovesne lege, tj.
+
+\[
+	\Psi_N (x, t = 0) = \phi_N (x - \alpha),
+\]
+
+kjer je $\phi_N$ prej omenjeno lastno stanje harm. oscilatorja.
+
+Parameter $\lambda$
+lahko poljubno spreminjamo, saj ostane neodvisen na našo brezdimenzijsko transformacijo.
+
+Imamo Dirichletove robne pogoje, kar pomeni, da z implicitno metodo v bistvu rešujemo sistem
+\[
+	A_{ij}x_j = b_i,
+\]
+
+kjer je naš $A$ tridiagonalna matrika. Tak sistem lahko rešujemo v $\mathcal{O}(N)$.
+
+\subsection{Vprašanja}
+\begin{itemize}
+	\item{Naš problem smo zaprli v škatlo dimenzije $L$. Kako velik mora biti ta $L$,
+		da bo rešitev zaradi tega zanemarljivo pokvarjena? ($\alpha = 0$)}
+	\item{Kako se spreminja rešitev $\Psi (x,t; \lambda)$ s parametrom $\lambda$?
+		($\alpha = 0$)}
+	\item{Poglejmo, kaj se zgodi z valovnim paketom po vklopu anharmonske motnje $\lambda$.
+		($\alpha \neq 0$)}
+\end{itemize}
+
+\subsection{Metoda}
+
+Implicitno metodo izvajamo s pomočjo iteracije. Opazimo, da lahko našo rešitev obravnavamo
+kot vektor, metodo samo pa kot linearni operator, oz. matriko.
+
+Če prepišemo sistem iz profesorjeve skripte\footnote{gornji indeksi $n$ predstavljajo časovni
+indeks, prav tako v skripti nekje manjka faktor $1/2$, kar sem tu popravil}
+
+\begin{align*}
+	&\psi_m^{n+1} - \frac{i\tau}{2}\bigg\{\frac{1}{2h^2}\left(\psi_{m+1}^{n+1} +
+		\psi_{m-1}^{n+1} - 2\psi_m^{n+1}\right) - V_m\psi_m^{n+1}\bigg\} = \\
+		&= \psi_m^n + \frac{i\tau}{2}\bigg\{\frac{1}{2h^2}\left(\psi_{m+1}^n +
+		\psi_{m-1}^n - 2\psi_m^n\right) - V_m\psi_m^n\bigg\}
+\end{align*}
+
+ugotovimo, da je ekvivalenten sistemu
+
+\begin{equation}
+	L_+ \mathbf{\Psi}^{(n+1)} = L_- \mathbf{\Psi}^{(n)} = \mathbf{b}^{(n)},
+\end{equation}
+
+kjer je matrika $L_+$ enaka
+
+\begin{equation}
+	L_\pm = 1 \mp \frac{i\tau}{4h^2}\begin{bmatrix}
+		a_0 & 1 & 0 & \ldots & & & 0\\
+		1 & a_1 & 1 & 0 & \ldots & & 0\\
+		0 & 1 & a_2 & 1 & 0 & \ldots & 0\\
+		\vdots & & & & \ddots \\
+		& & & \ldots & 0 & 1 & a_{M-1} \end{bmatrix}, \qquad
+	a_k = -2 - 2h^2V_k,
+\end{equation}
+
+vektorji $\mathbf{\Psi}^{(n)}$ pa so stolpci
+
+\begin{equation}
+	\mathbf{\Psi}^{(n)} = \begin{bmatrix} \psi_0^n \\ \psi_1^n \\ \vdots \\ \psi_{M-1}^n
+		\end{bmatrix}.
+\end{equation}
+
+Količin z indeksom $n+1$ ne poznamo, od koder se vidi iteracijski značaj naše metode. Problem
+Schr\" odingerjeve enačbe smo tako prevedli na reševanje tridiagonalnega sistema.
+
+Videti je, da metodo dobimo poceni, vendar moramo časovno stabilnost drago plačati, zaradi
+pogoja $h^2 \gg \tau$. To lahko izboljšamo s tem, da drugi odvod aproksimiramo z višjim redom
+diferenc, npr. petim redom. V tem primeru imamo pasato matriko s petimi "`diagonalami"'.
+
+Naša enačba se potem glasi
+
+\begin{align*}
+	&\psi_m^{n+1} - \frac{i\tau}{2}\bigg\{\frac{1}{2h^2}\left[\frac{4}{3}\left(
+		\psi_{m+1}^{n+1} + \psi_{m-1}^{n+1}\right) - \frac{1}{12}\left(
+		\psi_{m+2}^{n+1} + \psi_{m-2}^{n+1}\right) - \frac{5}{2}\psi_m^{n+1}\right] 
+		- V_m\psi_m^{n+1}\bigg\} = \\
+	&= \psi_m^n + \frac{i\tau}{2}\bigg\{\frac{1}{2h^2}\left[\frac{4}{3}\left(
+		\psi_{m+1}^n + \psi_{m-1}^n\right) - \frac{1}{12}\left(
+		\psi_{m+2}^n + \psi_{m-2}^n\right) - \frac{5}{2}\psi_m^n\right] -
+		V_m\psi_m^n\bigg\},
+\end{align*}
+
+v tem primeru si lahko privoščimo nižje med razmerje $\tau$ in $h^2$. V tem primeru
+dobimo
+
+\begin{equation}
+	L_\pm = 1 \mp \frac{i\tau}{4h^2}\begin{bmatrix}
+		a_0 & 4/3 & -1/12 & 0 & \ldots & \ldots & 0 \\
+		4/3 & a_1 & 4/3 & -1/12 & 0 & \ldots & 0 \\
+		-1/12 & 4/3 & a_2 & 4/3 & -1/12 & \ldots & 0 \\
+		\vdots & & & & \ddots & \\
+		0 & \ldots & \ldots & 0 & -1/12 & 4/3 & a_{M-1} \end{bmatrix}, \qquad
+	a_k = -\frac{5}{2} - 2h^2V_m,
+\end{equation}
+
+kar pride zelo prav, saj je na primer dobro razmerje že $\tau = 0.01$ in $h = 0.1$ za prvih
+$\sim 1000$ iteracij.
+
+\section{Rezultati}
+
+\end{document}
+
