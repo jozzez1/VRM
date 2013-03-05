@@ -7,10 +7,11 @@ CWD=`pwd`
 DIR=`pwd`/$1
 ANI=$DIR/animation
 SAVE=$2
+LENGTH=$3
 COUNT=0
 
 NUMBER=`ls $DIR | wc -l`
-FPS=`echo "$NUMBER/12" | bc`
+FPS=`echo "$NUMBER/$LENGTH" | bc`
 
 echo $FPS && sleep 2
 

@@ -21,14 +21,16 @@ int main (int argc, char ** argv)
 	    M = 100,
 	    s = 0,
 	    y = 0,
+	    T = 12,
 	    dflag = 0,
+	    pet = 0,
 	    arg;
 
 	char * dat = NULL;
 
 	opterr = 1;
 
-	while ((arg = getopt (argc, argv, "t:h:a:L:N:M:s:o:ldy")) != -1)
+	while ((arg = getopt (argc, argv, "t:h:a:L:N:M:s:o:T:ldyp")) != -1)
 	{
 	       switch (arg)
 	       {
@@ -64,6 +66,14 @@ int main (int argc, char ** argv)
 			       y = 1;
 			       break;
 
+		       case 'T':
+			       T = atoi (optarg);
+			       break;
+
+		       case 'p':
+			       pet = 1;
+		               break;
+
 		       case 'o':
 			       dat = (char *) malloc (40 * sizeof (char));
 			       strcpy (dat, optarg);
@@ -82,9 +92,11 @@ int main (int argc, char ** argv)
 			       printf (" -L <dbl> (0.0) -- potential parameter - Lambda\n");
 			       printf (" -N <int> (100) -- number of time-grains\n");
 			       printf (" -M <int> (100) -- number of space-grains\n");
-			       printf (" -s [0,1,2] (0)-- eigen function mode\n");
+			       printf (" -s [0,1,2] (0) -- eigen function mode\n");
 			       printf (" -d (no) -- animation mode (opposite is plotting)\n");
 			       printf (" -y (no) -- save the end file");
+			       printf (" -T <int> (12) -- animation length in seconds");
+			       printf (" -p (no) -- use five-diagonal matrix instead");
 			       printf (" -o <char *> -- name of output file\n\n");
 			       exit (EXIT_SUCCESS);
 
@@ -111,7 +123,7 @@ int main (int argc, char ** argv)
 	hod * u = (hod *) malloc (sizeof(hod));
 
 	// allocate internal varibales
-	init (u, h, t, a, Lambda, N, M, s);
+	init (u, h, t, a, Lambda, N, M, s, pet);
 
 	strcpy (u->dat, dat);
 
@@ -138,7 +150,7 @@ int main (int argc, char ** argv)
 	if (dflag == 1)
 	{
 		char * animation = (char *) malloc (60 * sizeof(char));
-		sprintf (animation, "./anime.sh %s %d", u->dat, y);
+		sprintf (animation, "./anime.sh %s %d %d", u->dat, y, T);
 
 		int status;
 		status = mkdir (u->dat, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);

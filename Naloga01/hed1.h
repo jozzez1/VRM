@@ -32,6 +32,7 @@ typedef struct
 
 	int N,                     // maximum time step
 	    M,                     // space granularity
+	    pet,                   // flag for 5-diagonal matrix
 	    n;                     // current time iteration
 
 } hod;
@@ -65,7 +66,7 @@ void shit (hod * u)
 
 		double r = a.dat[0]*a.dat[0] + a.dat[1]*a.dat[1],
 		       x = u->h* (i - u->M/2),
-		       V = 0.5 * x*x + u->Lambda * pow (x, 4);
+		       V = 0.5*x*x + u->Lambda * pow (x, 4);
 
 		fprintf (u->fout, "% 15lf % 15lf % 15lf\n", u->h*(i - u->M/2), r, V);
 	}
@@ -79,7 +80,7 @@ double vofm (int m, hod * u)
 {
 	double x = m * u->h - u->M * u->h/2, // we shift the potential by 1/2
 	       L = u->Lambda,
-	       V = 0.5 * x*x + L * pow (x, 4);
+	       V = 0.5*x*x + L * pow (x, 4);
 
 	return V;
 }
@@ -159,10 +160,8 @@ void matrixA (hod * u)
 	int i;
 
 	gsl_complex b;
-	b.dat[1] = (-1)*u->t*0.5/(u->h * u->h);
+	b.dat[1] = (-1)*u->t*0.25/(u->h * u->h);
 	b.dat[0] = 0;
-
-
 
 	// the center ...
 	for (i = 1; i <= u->M-2; i++)
@@ -172,7 +171,7 @@ void matrixA (hod * u)
 		gsl_complex a;
 
 		a.dat[0] = 1;
-		a.dat[1] = u->t/(2 * u->h * u->h)*(2 + u->h * u->h * V);
+		a.dat[1] = u->t/(2 * u->h * u->h)*(1 + u->h * u->h * V);
 
 		gsl_matrix_complex_set (u->A, i, i, a);
 		gsl_matrix_complex_set (u->A, i, i+1, b);
@@ -191,6 +190,55 @@ void matrixA (hod * u)
 
 }
 
+void matrixA1 (hod * u)
+{
+	int i;
+
+	gsl_complex b1 = gsl_complex_rect (0, (-1)*(u->t/(3.0*u->h*u->h)));
+	gsl_complex b2 = gsl_complex_rect (0, u->t/(u->h*u->h*48));
+
+	// center ...
+	for (i = 2; i <= u->M-3; i++)
+	{
+		double V = vofm (i, u);
+
+		gsl_complex a;
+
+		a.dat[0] = 1;
+		a.dat[1] = (u->t/(4*u->h*u->h))*(2.5 + 2.0*u->h*u->h*V);
+
+		gsl_matrix_complex_set (u->A, i, i-1, b1);
+		gsl_matrix_complex_set (u->A, i, i-2, b2);
+		gsl_matrix_complex_set (u->A, i, i, a);
+		gsl_matrix_complex_set (u->A, i, i+1, b1);
+		gsl_matrix_complex_set (u->A, i, i+2, b2);
+	}
+
+	// and now margins ...
+	gsl_matrix_complex_set (u->A, 0, 1, b1);
+	gsl_matrix_complex_set (u->A, 0, 2, b2);
+	gsl_matrix_complex_set (u->A, 1, 0, b1);
+	gsl_matrix_complex_set (u->A, 1, 2, b1);
+	gsl_matrix_complex_set (u->A, 1, 3, b2);
+
+	gsl_complex a;
+	a.dat[0] = 1;
+	a.dat[1] = (u->t/(4*u->h*u->h))*(2.5 + 2.0*u->h*u->h*vofm(0, u));
+	gsl_matrix_complex_set (u->A, 0, 0, a);
+	a.dat[1] = (u->t/(4*u->h*u->h))*(2.5 + 2.0*u->h*u->h*vofm(1, u));
+	gsl_matrix_complex_set (u->A, 1, 1, a);
+	a.dat[1] = (u->t/(4*u->h*u->h))*(2.5 + 2.0*u->h*u->h*vofm(u->M-2, u));
+	gsl_matrix_complex_set (u->A, u->M-2, u->M-2, a);
+	a.dat[1] = (u->t/(4*u->h*u->h))*(2.5 + 2.0*u->h*u->h*vofm(u->M-1, u));
+	gsl_matrix_complex_set (u->A, u->M-2, u->M-1, a);
+
+	gsl_matrix_complex_set (u->A, u->M-1, u->M-2, b1);
+	gsl_matrix_complex_set (u->A, u->M-1, u->M-3, b2);
+	gsl_matrix_complex_set (u->A, u->M-2, u->M-1, b1);
+	gsl_matrix_complex_set (u->A, u->M-2, u->M-3, b1);
+	gsl_matrix_complex_set (u->A, u->M-2, u->M-4, b2);
+}
+
 // construct B from A
 void herm_adA (hod * u)
 {
@@ -203,23 +251,32 @@ void herm_adA (hod * u)
 		gsl_matrix_complex_set (u->B, i, i, a);
 	}
 
-	a.dat[1] = u->t*0.5/(u->h * u->h);
-	a.dat[0] = 0;
+	a = gsl_complex_conjugate (gsl_matrix_complex_get (u->A, 0, 1));
 
 	for (i = 0; i <= u->M-2; i++)
 		gsl_matrix_complex_set (u->B, i, i+1, a);
-	for (i = 1; i <= u->M-2; i++)
+	for (i = 1; i <= u->M-1; i++)
 		gsl_matrix_complex_set (u->B, i, i-1, a);
 
+	// in case we have additional diagonals
+	if (u->pet == 1)
+	{
+		a = gsl_complex_conjugate (gsl_matrix_complex_get (u->A, 0, 2));
+		for (i = 0; i <= u->M-3; i++)
+			gsl_matrix_complex_set (u->B, i, i+2, a);
+		for (i = 2; i <= u->M-1; i++)
+			gsl_matrix_complex_set (u->B, i, i-2, a);
+	}
 }
 
 // initialization function
 void init (hod * u, double h, double t, double a, double Lambda,
-		int N, int M, int switsch)
+		int N, int M, int switsch, int pet)
 {
 	u->N = N;
 	u->M = M;
 	u->n = 0;
+	u->pet = pet;
 
 	u->t = t;
 	u->a = a;
@@ -239,7 +296,12 @@ void init (hod * u, double h, double t, double a, double Lambda,
 	u->bpr = gsl_vector_complex_calloc (u->M);
 
 	// we initialize the matrices
-	matrixA (u);      // initialize A
+	// initialize A
+	if (u->pet == 0)
+		matrixA (u);
+	if (u->pet == 1)
+		matrixA1 (u);
+
 	herm_adA (u);     // initialize B
 
 	// we decompose the matrix A
