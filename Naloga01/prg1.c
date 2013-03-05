@@ -112,8 +112,8 @@ int main (int argc, char ** argv)
 	if (dat == NULL)
 	{
 		dat = (char *) malloc (40 * sizeof (char));
-		sprintf (dat, "phi%d_N%d_M%d_%.2lf_%.0lf",
-				s,N,M,Lambda,a);
+		sprintf (dat, "phi%d_N%d_M%d_%d_%.0lf",
+				s, N, M, (int) (100 * Lambda), a);
 	}
 
 	char * file1 = (char *) malloc (44 * sizeof(char));

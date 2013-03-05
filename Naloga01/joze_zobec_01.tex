@@ -2,9 +2,9 @@
 \usepackage[slovene]{babel}
 \usepackage[utf8]{inputenc}
 \usepackage[T1]{fontenc}
-\usepackage[small]{caption}
+\usepackage[small, width=0.8\textwidth]{caption}
 \usepackage[pdftex]{graphicx}
-\usepackage{amssymb, amsmath, fullpage}
+\usepackage{amssymb, amsmath, fullpage, float, hyperref}
 
 \begin{document}
 
@@ -59,7 +59,7 @@ Imamo Dirichletove robne pogoje, kar pomeni, da z implicitno metodo v bistvu re�
 	A_{ij}x_j = b_i,
 \]
 
-kjer je naš $A$ tridiagonalna matrika. Tak sistem lahko rešujemo v $\mathcal{O}(N)$.
+kjer je $A$ tridiagonalna matrika. Tak sistem lahko rešujemo v $\mathcal{O}(N)$.
 
 \subsection{Vprašanja}
 \begin{itemize}
@@ -142,12 +142,198 @@ dobimo
 		\vdots & & & & \ddots & \\
 		0 & \ldots & \ldots & 0 & -1/12 & 4/3 & a_{M-1} \end{bmatrix}, \qquad
 	a_k = -\frac{5}{2} - 2h^2V_m,
+	\label{metoda}
 \end{equation}
 
-kar pride zelo prav, saj je na primer dobro razmerje že $\tau = 0.01$ in $h = 0.1$ za prvih
+kar pride zelo prav, saj je na primer dobro razmerje že $\tau = 0.002$ in $h = 0.1$ za prvih
 $\sim 1000$ iteracij.
 
+\subsection{Natančnost}
+
+Natančnost je bilo treba izbrati tako, da je bilo razmerje med hitrostjo in kvaliteto računa
+ravno pravšnje. Po daljšem preigravanjau sem uporabil kar prej omenjeni vrednosti, tj.
+\fbox{$\tau = 0.002$ in $h = 0.1$}. Poizkušal sem s tridiagonalno matriko, vendar za moje
+potrebe ni bila dovolj natančna, oz. računalo je počasi, zaradi tega, ker je bilo treba vzeti
+izjemno majhen časovni korak, da se je videla ena perioda pa je bilo treba izračunati več
+tisoč iteracij. Za moj primer je bilo $N = 8000$ ravno prava številka, kjer je $N$ maksimalno
+število časovnih iteracij. Prostor sem razdelil na $M = 300$ enakih koščkov, kar po mojem
+zadošča tekom celotnega poročila.
+
+\subsection{Karakteristična dolžina}
+
+Kakšen $L$ mora biti, da bodo efekti "`škatle"' zanemarljivi? Kvadrat valovnega paketa je
+neničelen skoraj vsepovsod (tj. povsod, razen na končnem številu točk). Vendar pa lahko
+vzamemo za merilo nek $\epsilon \in \mathbb{R}^+$. Kvadrat norme valovnega paketa,
+$|\Psi(x,t)|^2$ pada, ko gremo proti neskončnosti (saj spada med integrabilne funkcije).
+Če torej vzamemo limito, s katero poiščemo prvo število $a$, za katerega bo veljalo
+
+\[
+	\lim_{x \nearrow a} |\Psi (x, t)|^2 = \epsilon,
+\]
+
+in jo pošljemo v računalnik, vidimo, da je
+$\chi = |\langle \Psi \rangle - a|$  karakteristična velikost našega valovnega paketa.
+Da bo naš program deloval dobro, mora veljati \fbox{$L > \chi$}, efekti roba škatle so
+$\mathcal{O}(\epsilon)$. Če je $\epsilon$ dovolj majhen škatle praktično ni. Kadar imamo
+še odmik iz ravnovesne lege $\alpha$ mora veljati
+
+\[
+	\chi + \alpha < L,
+\]
+
+kjer so vplivi "`škatle"' spet reda $\epsilon$. Upam, da sem s tem odgovoril na prvo vprašanje.
+
 \section{Rezultati}
+
+\subsection{Ravnovesna lega}
+
+Na začetku samo testiramo stabilnost naše metode, zato pokažemo nekaj osnovnih načinov, ter
+njihovo nespremenjljivost. K grafom prilagam tudi animacije, za boljšo oceno. Te animacije
+niso zanimive. Imena datotek nosijo hiperpovezave, za lažji dostop do animacije. Za 
+predvajanje priporočam {\tt Mplayer}.
+
+\begin{figure}[H]
+	\centering
+	\includegraphics{phi0_N8000_M300_0_0}
+	\vspace{-20pt}
+	\caption{Osnovni način, $\lambda=0$. Tu je bila uporabljena tridiagonalna matrika, ker
+		vplivi potenciala niso veliki. Datoteka
+		\href{phi0_N8000_M300_0_0.avi}{{\tt phi0\_N8000\_M300\_0\_0.avi}}
+		vsebuje video.}
+	\label{fig1}
+	\vspace{-10pt}
+\end{figure}
+
+\begin{figure}[H]
+	\centering
+	\includegraphics{phi1_N8000_M300_0_0}
+	\vspace{-20pt}
+	\caption{Prvo vzbujeno stanje, $\lambda=0$. Datoteka
+		\href{phi1_N8000_M300_0_0.avi}{{\tt phi1\_N8000\_M300\_0\_0.avi}}
+		vsebuje video.}
+	\label{fig2}
+	\vspace{-10pt}
+\end{figure}
+
+\begin{figure}[H]
+	\centering
+	\includegraphics{phi2_N8000_M300_0_0}
+	\vspace{-20pt}
+	\caption{Drugo vzbujeno stanje, $\lambda=0$. Datoteka
+		\href{phi2_N8000_M300_0_0.avi}{{\tt phi2\_N8000\_M300\_0\_0.avi}}
+		vsebuje video.}
+	\label{fig3}
+	\vspace{-10pt}
+\end{figure}
+
+Zanimivo se mi zdi prvo vzbujeno stanje (nima preveč vrhov, niti premalo). Poglejmo, kako
+se spreminja, če spreminjam parameter $\lambda$. Od sedaj bom jemal 5-diagonalno matriko,
+da bodo rezultati bolj gotovi\footnote{nočem, da "`dihanje"' valovnega paketa pride od
+diskretizacijske napake}.
+
+\begin{figure}[H]
+	\centering
+	\includegraphics{phi1_N8000_M300_1_0}
+	\vspace{-20pt}
+	\caption{Prvo vzbujeno stanje, $\lambda=0.01$. Za vsak slučaj sem vzel
+		raje petdiagonalno matriko. Datoteka
+		\href{phi1_N8000_M300_1_0.avi}{{\tt phi1\_N8000\_M300\_1\_0.avi}}
+		vsebuje video, na katerem lahko vidimo pulz valovnega paketa.}
+	\label{fig4}
+	\vspace{-10pt}
+\end{figure}
+
+\begin{figure}[H]
+	\centering
+	\includegraphics{phi1_N8000_M300_5_0}
+	\vspace{-20pt}
+	\caption{Prvo vzbujeno stanje, $\lambda=0.05$. Datoteka
+		\href{phi1_N8000_M300_5_0.avi}{{\tt phi1\_N8000\_M300\_5\_0.avi}}
+		vsebuje video, na katerem lahko vidimo pulz valovnega paketa.}
+	\label{fig5}
+	\vspace{-10pt}
+\end{figure}
+
+\begin{figure}[H]
+	\centering
+	\includegraphics{phi1_N8000_M300_10_0}
+	\vspace{-20pt}
+	\caption{Prvo vzbujeno stanje, $\lambda=0.1$. Datoteka
+		\href{phi1_N8000_M300_10_0.avi}{{\tt phi1\_N8000\_M300\_10\_0.avi}}
+		vsebuje video. Pulz valovnega paketa je še izrazitejši.}
+	\label{fig6}
+	\vspace{-10pt}
+\end{figure}
+
+Vidimo, da je naš sistem zelo občutljiv že na majne $\lambda$ -- seveda, če smo predaleč od
+izhodišča nam majhen $\lambda$ ne pomaga, saj potencial raste kot $\sim x^4$, torej bi bil
+perturbacijski primer veljaven ne le za majhne $\lambda$, ampak bi morali biti tudi dovolj
+blizu izhodišča.
+
+\subsection{Izven ravnovesja, tj. $\alpha \neq 0$}
+
+Končno pridemo do zanimivega dela, ko je $\alpha \neq 0$. Za neničelne $\lambda$ se nam valovni
+paket razsuva, za $\lambda = 0$ pa mora ostati stabilen, kljub motnji. Pa poglejmo, če to drži.
+
+Za mojo izbiro granulacije $\tau$, $h$, tridiagonalna matrika ni zadostna, zato sem delal z
+matrikami iz en.~\eqref{metoda}.
+
+V sledečih grafih vidimo, da se naši valovi obnašajo kot nekakšen puding -- videti so mehki.
+
+\begin{figure}[H]
+	\centering
+	\includegraphics{phi1_N8000_M300_0_5}
+	\vspace{-20pt}
+	\caption{Prvo vzbujeno stanje, $\lambda=0$. Datoteka
+		\href{phi1_N8000_M300_0_5.avi}{{\tt phi1\_N8000\_M300\_0\_5.avi}}
+		vsebuje video. Rahlo se poznajo defekti zaradi diskretizacije.}
+	\label{fig7}
+	\vspace{-10pt}
+\end{figure}
+
+\begin{figure}[H]
+	\centering
+	\includegraphics{phi1_N8000_M300_1_5}
+	\vspace{-20pt}
+	\caption{Prvo vzbujeno stanje, $\lambda=0.01$. Datoteka
+		\href{phi1_N8000_M300_1_5.avi}{{\tt phi1\_N8000\_M300\_1\_5.avi}}
+		vsebuje video. Val se zelo lepo in gladko razsuje. Upam, da se tu
+		diskretizacijske napake ne pozna preveč.}
+	\label{fig8}
+	\vspace{-10pt}
+\end{figure}
+
+\begin{figure}[H]
+	\centering
+	\includegraphics{phi1_N8000_M2500_10_5}
+	\vspace{-20pt}
+	\caption{Prvo vzbujeno stanje, $\lambda=0.1$. Datoteka
+		\href{phi1_N8000_M2500_10_5.avi}{{\tt phi1\_N8000\_M1500\_10\_5.avi}}
+		vsebuje video. Za ta primer sem vzel $\tau = 8\cdot10^{-4}$ in
+		$h = 0.01$, saj je potencial previsok za dan $h$. Začetni val še prej razpade.
+		Časovni korak vseeno ni zadosti majhen in proti koncu se metoda sesuva.}
+	\label{fig9}
+	\vspace{-10pt}
+\end{figure}
+
+Pri grafu~\ref{fig9} sem moral časovno in krajevno skalo bolj fino narezati, ker je bil
+potencial prevelik za dan $h$. Če pa hočem zmanjšati $h$ je treba zmanjšati tudi $\tau$.
+Valovni paket veliko bolj hitro pade proti središču in se zaleti v nasprotni rob. Vsi prejšnji
+grafi so imeli za 16 brezdimenzijskih časovnih enot propagacije, ta pa je imel le za 6 in
+kljub temu tako hitro prileti od mesta.
+
+Sicer pa se doagaja točno tisto, kar smo pričakovali -- valovni paket je relativno konstanten 
+in stabilen za $\lambda = 0$, saj je lastna valovna funkcija Hamiltonovega operatorja.
+
+Ko vključimo motnjo paket ni več lastno stanje, ampak superpozicija le teh. To stanje se
+razstavi po teh lastnih načinih za katere pa velja disperzija -- vsak izmed teh načinov se
+propagira z drugačno hitrostjo.
+
+\section{Zaključek}
+
+Implicitna metoda se dobro obnese in je za ustrezno izbiro granulacije stabilna za več tisoč
+korakov. Metoda klecne če smo predaleč od izhodišča, ker postane potencial previsok in
+napake pri množenju rastejo.
 
 \end{document}
 
