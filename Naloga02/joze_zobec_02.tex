@@ -1,0 +1,158 @@
+\documentclass[a4 paper, 12pt]{article}
+\usepackage[slovene]{babel}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[small, width=0.8\textwidth]{caption}
+\usepackage[pdftex]{graphicx}
+\usepackage{amssymb, amsmath, fullpage, float, hyperref}
+
+\begin{document}
+
+\begin{center}
+\textsc{Višje računske metode}\\
+\textsc{2012/13}\\[0.5cm]
+\textbf{2. naloga -- stacionarni problem Schr\" odingerjeve enačbe}
+\end{center}
+\begin{flushright}
+\textbf{Jože Zobec}
+\end{flushright}
+
+\section{Uvod}
+
+V tej nalogi iščemo lastne funkcije prejšnje naloge. Problem bi radi reševali v lastni bazi,
+ker se problem v tem primeru razcepi na časovni del, ki ga znamo rešiti (rešitev je
+$\exp(-iE_n)$) in na krajevni del, ki je rešitev amplitudne enačbe.
+
+Lastne baze $\big\{|\psi_n\rangle\big\}$ ne poznamo, vendar lahko problem vseeno še vedno
+rešujemo v neperturburani bazi $\big\{|\phi_n\rangle\big\}$. Vsako funkcijo $|\psi_n\rangle$
+lahko potem zapišemo kot
+
+\[
+	|\psi_n\rangle = \sum_{m=0}^\infty v_{nm}|\phi_m\rangle.
+\]
+
+V nadaljevanju bom upošteval Einsteinovo konvencijo. Prav tako ne bom posvečal posebne
+pozornosti razliki med npr. matriko $A$ ter njenimi komponentami $A_{ij}$, upam da bo razvidno
+iz konteksta. Matrika $v_{mn}$ mora biti unitarna, saj povezuje dve ortonormalni bazi v istem prostoru.
+To lahko pokažemo tako:
+
+\begin{align}
+	\langle\psi_n|\psi_m\rangle &= \delta_{mn}, \notag \\
+	\langle\phi_a| v^*_{an} v_{mb} |\phi_b\rangle &= \delta_{nm}. \label{norm}
+\end{align}
+
+Za vse primere, razem $m = n$ je naša vsota enaka nič, zato je zadosti, da obravnavamo le 
+$m = n$.
+
+\begin{equation}
+	\langle\phi_a| (v^\dagger v)_{ab} |\phi_b\rangle = 1. \\
+	\label{stuff}
+\end{equation}
+
+Matriko $(v^\dagger v)_{ab}$ razvijemo po komponentah na diagonalni in izvendiagonalni del:
+
+\begin{equation*}
+	(v^\dagger v)_{ab} = \alpha\delta_{ab} +
+		\beta\underbrace{\langle\phi_i| v^*_{ia}v_{bj} |\phi_j\rangle}_{=\delta_{ab}},
+\end{equation*}
+
+po predpostavki~\eqref{norm} vidimo, da v bistvu nimamo izvendiagonalnega člena, zadošča že
+diagonalni parameter $\alpha$, kar pomeni $(v^\dagger v)_{ab} = \alpha \delta_{ab}$. To
+vstavimo v en.~\eqref{stuff} in dobimo
+
+\begin{equation*}
+	\langle\phi_a|\alpha\delta_{ab}|\phi_b\rangle = \alpha\langle\phi_a|\phi_b\rangle = 1,
+\end{equation*}
+
+vendar pa je baza ${|\phi_n\rangle}$ spet ortonormirana, od koder sledi $\alpha = 1$ in
+
+\begin{equation}
+	(v^\dagger v)_{ab} = \delta_{ab},
+\end{equation}
+
+torej je matrika $v$ unitarna. Odtod tudi sledi, da si matriko $v_{nm}$ mislimo kot lastni
+vektor $\underline{v}_n$ matrike $H_{ij}$, saj je $\{\underline{v}_n\}$ spet
+ortonormalna baza vektorskega prostora, vendar je to tokrat baza prostora, v katerem "`živi"'
+$H_{ij}$. 
+
+\[
+	\underline{v}_i\underline{v}_j = v_{ik} v_{kj}^* = (vv^\dagger)_{ij} = \delta_{ij}.
+\]
+
+Matriko $v_{mn}$ lahko dobimo tako: definirajmo projekcijski operator
+$\mathbf{P} = |\phi_n\rangle\langle\phi_n|$. To je očitno projekcijski operator, saj
+$\mathbf{P}^2 = \mathbf{P}$:
+
+\[
+	\mathbf{P}^2 = |\phi_i\rangle\langle\phi_i|\phi_j\rangle\langle\phi_j| =
+		|\phi_i\rangle\langle\phi_j|\delta_{ij} = |\phi_i\rangle\langle\phi_i| = 
+		\mathbf{P}
+\]
+
+Bazo $\big\{|\psi_n\rangle\big\}$ lahko zdaj proiciramo na $\big\{|\phi_n\rangle\big\}$.
+Ker proiciramo na isti prostor ne bomo izgubili informacije.
+
+\[
+	\mathbf{P}|\psi_m\rangle = |\phi_n\rangle\underbrace{\langle\phi_n|\psi_m\rangle}_{=
+		v_{mn}} = v_{mn}|\phi_n\rangle.
+\]
+
+Operator $\mathbf{P}$ je po definiciji Fouriejeva transformacija\footnote{Vendar ne
+trigonometrična.}, ki nam pomaga rotirati baze v Hilbertovem prostoru. Ta operator je v bazi
+$|\phi_n\rangle$ kar identiteta, saj vektorjem $|\phi_n\rangle$ nič ne naredi. Sedaj lahko
+lažje razumemo, zakaj je $v$ unitarna matrika:
+
+\begin{align*}
+	(v^\dagger v)_{ab} &= \langle\phi_a|\psi_j\rangle^\dagger \langle\phi_b|\psi_j\rangle, \\
+	&= \langle\psi_j|\phi_a\rangle \langle\phi_b|\psi_j\rangle, \\
+	&= \langle\phi_b\underbrace{|\psi_j\rangle\langle\psi_j|}_{= 1}\phi_a\rangle \\
+	&= \langle\phi_a|\phi_b\rangle = \delta_{ab}.
+\end{align*}
+
+Pokažimo, da je $\underline{v}_n$ res spet lastni vektor matrike $H_{ij}$. Tokrat bom delal razloček: $H_{ij}$
+je komponenta matrike $\mathbf{H}$. Kot sem povedal prej, bomo predpostavili, da je so $|\psi_n\rangle$ lastna baza
+za $\mathbf{H}$. Po komponentah se ga v harmonski bazi zapiše kot
+
+\[
+	H_{ij} = \langle\phi_i|\hat{H}|\phi_j\rangle, \\
+\]
+
+v tej bazi ni diagonalna. Za lastni vektor $\underline{v}_n$ matrike $\mathbf{H}$ velja
+
+\[
+	\mathbf{H}\underline{v}_n = H_{ij}v_{nj} = E_n v_{ni} = E_n \underline{v}_n.
+\]
+
+Preverimo:
+
+\begin{align*}
+	H_{ij}v_{nj} &= \langle\phi_i|\hat{H}\overbrace{|\phi_j\rangle\langle\phi_j|}^{= 1}\psi_n\rangle \\
+	&= \langle\phi_i|\hat{H}|\psi_n\rangle = \langle\phi_i|E_n|\psi_n\rangle = E_n \langle\phi_i|\psi_n\rangle \\
+	&= E_n v_{ni} = E_n \underline{v}_n.
+\end{align*}
+
+Vidimo, da je je vektor $\underline{v}_n$ res lastni vetkor matrike $\mathbf{H}$, oz. vrstice matrike $v_{ij}$ so
+lastni vektorji.
+
+Kako poiskati matriko $v_{ij}$? Matriko $H_{ij}$ znami zapisati v bazi $\big\{|\phi_n\rangle\big\}$ iz prejšnje naloge.
+Matrika $v_{ij}$ je pač matrika, ki ta hamiltonian diagonalizira:
+
+\[
+	\langle\psi_i|\hat{H}|\psi_j\rangle = \langle\phi_a|\hat{v}^\dagger\hat{H}\hat{v}|\phi_b\rangle,
+\]
+
+oz.
+
+\[
+	H^{(\psi)}_{ij} = v_{ia}^* H^{(\phi)}_{ab} v_{bj} = E_i\delta_{ij}.
+\]
+
+Za hamiltonian lahko vzamemo matriko iz diferenčne sheme iz prejšnje naloge. V prejšnji nalogi smo videli, da
+tridiagonalna diferenčna shema ni dovolj dobra, zaradi česar se bomo poslužili višjih shem, vendar pa zahtevnost
+za diagonalizacijo takih matrik raste! K sreči imamo na voljo Lanczosev algoritem, s katerim lahko vsako Hermitsko matriko
+pretvorimo v tridiagonalno Hermitsko matriko. Algoritmi za polne matrike dimenzije $N$ zahtevajo $\mathcal{O}(N^3)$
+operacij, za tridiagonalne matrike pa le $\mathcal{O}(N^2)$ -- Lanczosov algoritem se izplača, ima pa isto zahtevnost.
+
+Namesto, da bi diagonalizirali hamiltonian, lahko numerično rešujemo amplitudno enačbo ter dako dobimo lastne pare.
+
+\end{document}
