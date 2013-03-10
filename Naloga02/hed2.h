@@ -18,8 +18,9 @@ typedef struct
 	int N,
 	    p;       // red odvodov
 
-	double * H,  // Hamiltonian
-	       * v,  // eigenvector matrix
+	double * H,  // Hamiltonian, oz. na koncu matrika v
+	       * v,  // eigenvector matrix in Lanczos space
+	       * w,  // Lanczos transformation matrix
 	       * DT, // dominant of tridiagonal
 	       * ST, // subdiagonal of tridiagonal
 	       * e;  // eigenvalue array
@@ -188,6 +189,8 @@ void Lanczos (hod * u)
 {
 	int i;
 
+	gsl_matrix_view a = gsl_matrix_view_array (u->w, u->N, u->N);
+
 	double * b = (double *) malloc (u->N * sizeof (double)),
 	       * a = (double *) malloc (u->N * sizeof (double)),
 	       * v0 = (double *) calloc (u->N, sizeof (double)),
@@ -195,7 +198,10 @@ void Lanczos (hod * u)
 	       * w = (double *) calloc (u->N, sizeof (double));
 
 	b[0] = 0;
-	v[0] = 1;
+	v1[0] = 1;
+
+	for (i = 0; i <= u->N - 2; i++)
+		gsl_matrix_set (&a.matrix, i, 0, v1[i]);
 
 	for (i = 0; i <= u->N-2; i++)
 	{
@@ -211,7 +217,10 @@ void Lanczos (hod * u)
 		swap (v1, v0);
 
 		for (j = 0; j <= u->N-1; j++)
+		{
 			v1[j] = w[j]/b[i+1];
+			gsl_matrix_set (&a.matrix, j, i, v1[j]);
+		}
 	}
 
 	cblas_dsymv (CblasRowMajor, CblasUpper, u->N, 1.0, u->H, u->N, v1, 1, 0.0, w, 1);
@@ -245,7 +254,7 @@ void init (hod * u, double h, double L, int N, int p)
 	    D = u->N - 1;
 
 	u->H = (double *) calloc (M, sizeof(double));
-	u->v = (double *) malloc (u->N * sizeof (double));
+	u->v = (double *) malloc (M * sizeof (double));
 	u->DT = (double *) malloc (u->N * sizeof (double));
 	u->ST = (double *) malloc (D * sizeof (double));
 	u->e = (double *) malloc (u->N * sizeof (double));
@@ -270,15 +279,103 @@ void init (hod * u, double h, double L, int N, int p)
 			break;
 
 		default:
-			printf ("Invalid option!\nSelecting the five-diagonal option instead.\n");
+			printf ("Invalid option!\n");
+			printf ("Selecting the five-diagonal option instead.\n");
 			hamilton4 (u);
 			break;
 	}
 
 	// we use the Lanczos method for hermitian matrices
-	Lanczos (u);
+	if (u->p != 2)
+		Lanczos (u);
 }
 
-// now to diagonalize this baby ...
+// Elenaki ise i jineki mou
+void destroy (hod * u)
+{
+	free (H);
+	free (v);
+	free (DT);
+	free (ST);
+	free (e);
+
+	free (u);
+}
+
+
+// now to diagonalize this baby with this handy wrapper ...
+// compile with: -llapack -lblas -lcblas -latlas
+// for fortran code ALL arguments must be passed as pointers
+static long MRRR (hod * u)
+{
+	extern void dstemr_ (char * jobz, // calculation mode
+			char * range,     // range of eigenvalues to be computed
+			int * N,          // rank of the matrix to be computed
+			double * D,       // (in/out) leading diagonal of the matrix
+			double * E,       // (in/out) side diagonals of the matrix
+			double * vl,      // lowest window for the eigenvalue
+			double * vu,      // upper bound for the eigen value
+			int * Il,         // again some bounds ... set to 0
+			int * Iu,         // again bounds, depending on RANGE variable
+			int * M,          // (out) number of eigenvalues found
+			double * w,       // (out) vector of the found eigenvalues
+			double * z,       // (out) array of eigenvectors -- (in the columns)
+			int * ldz,        // leading dimension of the array
+			int * nzc,        // number of eigenvectors to be held in z
+			int * isuppz,     // (out) integer array ... dimension 2*max(1,M)
+			int * tryrac,     // (in/out) logical (int or long int) ... for high accuracy
+			double * work,    // (out) array of dimension lwork, whic is the output
+			int * lwork,      // (in) for JOBZ='V' has to be >= max (1, 12*N)
+			double * iwork,   // (out) same as work
+			double * liwork,  // (in) for JOBZ='V' has to be >= max (1, 10*N)
+			int * Info);      // (out) =0 for successfull operation
+
+	char JOBZ   =   'V',
+	     RANGE  =   'A';
+
+	int i = u->N-1;
+
+	double * d = (double *) malloc (u->N * sizeof(double)),
+	       * e = (double *) malloc (i * sizeof (double));
+	
+	for (i = 0; i <= u->N - 1; i++)
+	{
+		d[i] = u->DT[i];
+		e[i] = u->ST[i];
+	}
+
+	double VL = 0,
+	       VU = 1;
+
+	int IL = 0,
+	    IU = 1,
+	    M;
+
+	// for 'w' I will use 'u->e' -- already an array
+	// for 'z' I will use 'u->v' -- already an array
+	
+	int LDZ    = u->N,
+	    NZC    = u->N,
+	    ISUPPZ = (int *) malloc (2*u->N * sizeof (int)),
+	    TRYRAY = 1, // I hope this means 'yes, check for precision :D'
+	    LWORK  = 12*u->N,
+	    LIWORK = 10*u->N,
+	    INFO;
+
+	double * WORK  = (double *) malloc (LWORK * sizeof (double)),
+	       * IWORK = (double *) malloc (LIWORK * sizeof (double));
+
+
+	dstemr_ (&JOBZ, &RANGE, &u->N, d, e, &VL, &VU, &IL, &IU, &M, u->e, u->v, &LDZ, &NZC,
+			ISUPPZ, &TRYRAY, WORK, &LWORK, IWORK, &LIWORK, &INFO);
+
+	free (d);
+	free (e);
+	free (ISUPPZ);
+	free (WORK);
+	free (IWORK);
+
+	return INFO;
+}
 
 #endif

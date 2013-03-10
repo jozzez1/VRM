@@ -125,11 +125,11 @@ v tej bazi ni diagonalna. Za lastni vektor $\underline{v}_n$ matrike $\mathbf{H}
 
 Preverimo:
 
-\begin{align*}
-	H_{ij}v_{nj} &= \langle\phi_i|\hat{H}\overbrace{|\phi_j\rangle\langle\phi_j|}^{= 1}\psi_n\rangle \\
-	&= \langle\phi_i|\hat{H}|\psi_n\rangle = \langle\phi_i|E_n|\psi_n\rangle = E_n \langle\phi_i|\psi_n\rangle \\
-	&= E_n v_{ni} = E_n \underline{v}_n.
-\end{align*}
+\begin{align}
+	H_{ij}v_{nj} &= \langle\phi_i|\hat{H}\overbrace{|\phi_j\rangle\langle\phi_j|}^{= 1}\psi_n\rangle \notag \\
+	&= \langle\phi_i|\hat{H}|\psi_n\rangle = \langle\phi_i|E_n|\psi_n\rangle = E_n \langle\phi_i|\psi_n\rangle \notag \\
+	&= E_n v_{ni} = E_n \underline{v}_n. \label{dokaz}
+\end{align}
 
 Vidimo, da je je vektor $\underline{v}_n$ res lastni vetkor matrike $\mathbf{H}$, oz. vrstice matrike $v_{ij}$ so
 lastni vektorji.
@@ -153,6 +153,26 @@ za diagonalizacijo takih matrik raste! K sreči imamo na voljo Lanczosev algorit
 pretvorimo v tridiagonalno Hermitsko matriko. Algoritmi za polne matrike dimenzije $N$ zahtevajo $\mathcal{O}(N^3)$
 operacij, za tridiagonalne matrike pa le $\mathcal{O}(N^2)$ -- Lanczosov algoritem se izplača, ima pa isto zahtevnost.
 
-Namesto, da bi diagonalizirali hamiltonian, lahko numerično rešujemo amplitudno enačbo ter dako dobimo lastne pare.
+Naša diagonalizacija poteka torej prek dveh korakov. Kvadratno formo zapišemo kot
+
+\[
+	x^TAx = x^T \underbrace{L^T L}_{= 1} A \underbrace{L^T L}_{= 1} x,
+\]
+
+kjer je $L$ matrika Lanczosove transformacije -- rotira spet v ortonormalno bazo istega prostora, torej mora biti ortogonalna, kot zgornji
+izraz tudi predpostavi. V tej bazi je matrika A tridiagonalna. Izvesti moramo še diagonalizacijo z matriko $V$
+
+\begin{align*}
+	x^T L^T L A L^T L x &= x^T L^T V^T V L A L^T V^T V L x \\
+		&= \underbrace{(VLx)^T}_{y^T} \overbrace{\underbrace{(VL)}_{v} A \underbrace{(VL)^T}_{v^T}}^{D} \underbrace{(VLx)}_{y} \\
+		&= y^T D y,
+\end{align*}
+
+kjer je matrika $D$ diagonalna, pretvorniška matrika pa je $v_{ij} = V_{ik}L_{kj}$. Matriki $V^T$ in $L^T$ vsebujeta bazne
+vektorje po stolpcih, oz. matrika $v$ vsebuje lastne vektorje po vrsticah, kar sem demonstriral malo prej v
+enačbi~\eqref{dokaz}.
+
+Namesto, da bi diagonalizirali hamiltonian, lahko numerično rešujemo amplitudno enačbo ter dako dobimo lastne pare prek
+sekantne metode.
 
 \end{document}
