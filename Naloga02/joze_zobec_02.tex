@@ -76,7 +76,7 @@ ortonormalna baza vektorskega prostora, vendar je to tokrat baza prostora, v kat
 $H_{ij}$. 
 
 \[
-	\underline{v}_i\underline{v}_j = v_{ik} v_{kj}^* = (vv^\dagger)_{ij} = \delta_{ij}.
+	\underline{v}_i \cdot \underline{v}_j = v_{ik} v_{kj}^* = (vv^\dagger)_{ij} = \delta_{ij}.
 \]
 
 Matriko $v_{mn}$ lahko dobimo tako: definirajmo projekcijski operator
@@ -117,24 +117,24 @@ za $\mathbf{H}$. Po komponentah se ga v harmonski bazi zapiše kot
 	H_{ij} = \langle\phi_i|\hat{H}|\phi_j\rangle, \\
 \]
 
-v tej bazi ni diagonalna. Za lastni vektor $\underline{v}_n$ matrike $\mathbf{H}$ velja
+v tej bazi ni diagonalna. Za lastni vektor $\underline{v}_n$ matrike $\mathbf{H}$ velja (brez Einsteinovega načela)
 
 \[
-	\mathbf{H}\underline{v}_n = H_{ij}v_{nj} = E_n v_{ni} = E_n \underline{v}_n.
+	\mathbf{H}\underline{v}_n = \sum_{i,j} H_{ij}v_{nj} = E_n \sum_{i} v_{ni} = E_n \underline{v}_n.
 \]
 
 Preverimo:
 
 \begin{align}
-	H_{ij}v_{nj} &= \langle\phi_i|\hat{H}\overbrace{|\phi_j\rangle\langle\phi_j|}^{= 1}\psi_n\rangle \notag \\
-	&= \langle\phi_i|\hat{H}|\psi_n\rangle = \langle\phi_i|E_n|\psi_n\rangle = E_n \langle\phi_i|\psi_n\rangle \notag \\
-	&= E_n v_{ni} = E_n \underline{v}_n. \label{dokaz}
+	\sum_{i,j} H_{ij}v_{nj} &= \sum_i \langle\phi_i|\hat{H}\overbrace{\sum_j |\phi_j\rangle\langle\phi_j|}^{= 1}\psi_n\rangle \notag \\
+	&= \sum_i \langle\phi_i|\hat{H}|\psi_n\rangle = \sum_i \langle\phi_i|E_n|\psi_n\rangle = E_n \sum_i \langle\phi_i|\psi_n\rangle \notag \\
+	&= E_n \sum_i v_{ni} = E_n \underline{v}_n. \label{dokaz}
 \end{align}
 
 Vidimo, da je je vektor $\underline{v}_n$ res lastni vetkor matrike $\mathbf{H}$, oz. vrstice matrike $v_{ij}$ so
 lastni vektorji.
 
-Kako poiskati matriko $v_{ij}$? Matriko $H_{ij}$ znami zapisati v bazi $\big\{|\phi_n\rangle\big\}$ iz prejšnje naloge.
+Kako poiskati matriko $v_{ij}$? Matriko $H_{ij}$ znamo zapisati v bazi $\big\{|x_n\rangle\big\}$ iz prejšnje naloge.
 Matrika $v_{ij}$ je pač matrika, ki ta hamiltonian diagonalizira:
 
 \[
@@ -153,7 +153,8 @@ za diagonalizacijo takih matrik raste! K sreči imamo na voljo Lanczosev algorit
 pretvorimo v tridiagonalno Hermitsko matriko. Algoritmi za polne matrike dimenzije $N$ zahtevajo $\mathcal{O}(N^3)$
 operacij, za tridiagonalne matrike pa le $\mathcal{O}(N^2)$ -- Lanczosov algoritem se izplača, ima pa isto zahtevnost.
 
-Naša diagonalizacija poteka torej prek dveh korakov. Kvadratno formo zapišemo kot
+Naša diagonalizacija poteka torej prek dveh korakov. Naš hamiltonian je realna simetrična matrika, torej pojem
+unitarnosti postane ortogonalnost. Kvadratno formo naše matrike zapišemo kot
 
 \[
 	x^TAx = x^T \underbrace{L^T L}_{= 1} A \underbrace{L^T L}_{= 1} x,
@@ -174,5 +175,40 @@ enačbi~\eqref{dokaz}.
 
 Namesto, da bi diagonalizirali hamiltonian, lahko numerično rešujemo amplitudno enačbo ter dako dobimo lastne pare prek
 sekantne metode.
+
+Matrika iz prejšnje naloge NI v bazi $\big\{|\phi_n\rangle\big\}$, ampak v $\big\{|x_n\rangle\big\}$, tako da
+
+\[
+	\langle \phi_n | x_m \rangle = \phi_{n,m} = \phi_n (x_m) = \phi_n (m \cdot h), \quad m \in \mathbb{Z}, \quad h \in \mathbb{R}.
+\]
+
+Spet lahko definiramo
+
+\[
+	\underline{\phi}_n = \sum_m \phi_n(x_m) = \sum_m \phi_{n,m}.
+\]
+
+Ta baza je zelo prikladna, saj lahko opazujemo propagacijo kakršnega valovnega paketa. Lahko spet naredimo tudi koherentno stanje
+in preverimo delovanje hamiltoniana. Prav tako lahko matriko $\phi_{nm}$ uporabimo za rotacijo iz prostora baze 
+$\big\{|x_n\rangle\big\}$ v bazo $\big\{|\phi_n\rangle\big\}$. To matriko poznamo, to so kar lastne funkcije harmonskega
+oscilatorja.
+
+Vendar pa ta baza ni dobra iz dveh razlogov:
+\begin{enumerate}
+	\item{Hermitovi polinomi so ortogonalni v zveznem prostoru -- ortogonalnst se z diskretizacijo močno pokvari za polinome
+		visokih redov. Potem sploh ni
+		važno, če računamo z diferenčno shemo $\mathcal{O}(h^8)$, če je ena izmed rotacijskih matrik slabo ortogonalna.}
+	\item{Če pričnemo v taki bazi ne vemo kako zapisati koherentno stanje. Seveda, lahko ga zapišemo v bazi $\big\{|x_n\rangle\big\}$,
+		in ga potem transformiramo v $\big\{|\phi_n\rangle\big\}$, vendar je to potrata časa.}
+\end{enumerate}
+
+Če iz baze $x_n$ rotiramo v $\phi_n$, nato odtod v Lanczosovo bazo in na koncu v lastno bazo $\psi_n$ se naša matrika $\psi_{ij}$, ki
+povezuje $\big\{|x_n\rangle\big\}$ in $\big\{|\psi_n\rangle\big\}$ zapiše kot
+
+\[
+	\psi_{ij} = v_{ik} \phi_{kj} = V_{il} L_{lk} \phi_{kj},
+\]
+
+tako dobimo $\psi_{n,m} = \psi_n (x_m)$ in pa lastne vektorje $\underline{\psi}_n$.
 
 \end{document}

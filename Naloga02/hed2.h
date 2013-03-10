@@ -6,9 +6,9 @@
 
 #include <gsl/gsl_matrix.h>
 #include <gsl/gsl_vector.h>
+#include <gsl/gsl_sf_gamma.h>
 #include <math.h>
 #include <cblas.h>
-#include <clapack.h>
 
 typedef struct
 {
@@ -16,20 +16,22 @@ typedef struct
 	       L;
 
 	int N,
-	    p;       // red odvodov
+	    tryrac,   // accuracy "boolean"
+	    p;        // approximation order of the 2nd derivative
 
-	double * H,  // Hamiltonian, oz. na koncu matrika v
-	       * v,  // eigenvector matrix in Lanczos space
-	       * w,  // Lanczos transformation matrix
-	       * DT, // dominant of tridiagonal
-	       * ST, // subdiagonal of tridiagonal
-	       * e;  // eigenvalue array
+	double * H,   // Hamiltonian, oz. na koncu matrika v
+	       * v,   // eigenvector matrix in Lanczos space
+	       * w,   // Lanczos transformation matrix
+	       * DT,  // dominant of tridiagonal
+	       * ST,  // subdiagonal of tridiagonal
+	       * phi, // starting vector
+	       * e;   // eigenvalue array
 } hod;
 
 // potential
 double pot (hod * u, int i)
 {
-	double x = u->h * (i - 0.5*u->M),
+	double x = u->h * (i - 0.5*u->N),
 	       V = 0.5*x*x + u->L*pow (x, 4);
 
 	return V;
@@ -61,8 +63,8 @@ void hamilton4 (hod * u)
 {
 	int i;
 
-	gsl_matrix view m = gsl_matrix_view_array (u->H, u->N, u->N);
-gg
+	gsl_matrix_view m = gsl_matrix_view_array (u->H, u->N, u->N);
+
 	double a = 1.0/pow(u->h, 2),
 	       b2 = (1.0/24)*a,
 	       b1 = (-2.0/3)*a,
@@ -161,7 +163,7 @@ void hamilton8 (hod * u)
 		gsl_matrix_set (&m.matrix, i, i-4, b4);
 }
 
-void swapv (double * v1, double * v2, int N)
+void swap (double * v1, double * v2, int N)
 {
 	int i;
 	double x;
@@ -189,7 +191,7 @@ void Lanczos (hod * u)
 {
 	int i;
 
-	gsl_matrix_view a = gsl_matrix_view_array (u->w, u->N, u->N);
+	gsl_matrix_view m = gsl_matrix_view_array (u->w, u->N, u->N);
 
 	double * b = (double *) malloc (u->N * sizeof (double)),
 	       * a = (double *) malloc (u->N * sizeof (double)),
@@ -201,7 +203,7 @@ void Lanczos (hod * u)
 	v1[0] = 1;
 
 	for (i = 0; i <= u->N - 2; i++)
-		gsl_matrix_set (&a.matrix, i, 0, v1[i]);
+		gsl_matrix_set (&m.matrix, i, 0, v1[i]);
 
 	for (i = 0; i <= u->N-2; i++)
 	{
@@ -214,12 +216,12 @@ void Lanczos (hod * u)
 
 		b[i+1] = sqrt (scalar (w, w, u->N));
 
-		swap (v1, v0);
+		swap (v1, v0, u->N);
 
 		for (j = 0; j <= u->N-1; j++)
 		{
 			v1[j] = w[j]/b[i+1];
-			gsl_matrix_set (&a.matrix, j, i, v1[j]);
+			gsl_matrix_set (&m.matrix, j, i, v1[j]);
 		}
 	}
 
@@ -243,12 +245,13 @@ void Lanczos (hod * u)
 }
 
 // struct initializer
-void init (hod * u, double h, double L, int N, int p)
+void init (hod * u, double h, double L, int N, int p, int tryrac)
 {
 	u->h = h;
 	u->L = L;
 	u->N = N;
 	u->p = p;
+	u->tryrac = tryrac;
 
 	int M = u->N * u->N,
 	    D = u->N - 1;
@@ -293,11 +296,11 @@ void init (hod * u, double h, double L, int N, int p)
 // Elenaki ise i jineki mou
 void destroy (hod * u)
 {
-	free (H);
-	free (v);
-	free (DT);
-	free (ST);
-	free (e);
+	free (u->H);
+	free (u->v);
+	free (u->DT);
+	free (u->ST);
+	free (u->e);
 
 	free (u);
 }
@@ -308,6 +311,7 @@ void destroy (hod * u)
 // for fortran code ALL arguments must be passed as pointers
 static long MRRR (hod * u)
 {
+	// automatically tries for 8 decimal accuracy
 	extern void dstemr_ (char * jobz, // calculation mode
 			char * range,     // range of eigenvalues to be computed
 			int * N,          // rank of the matrix to be computed
@@ -327,7 +331,7 @@ static long MRRR (hod * u)
 			double * work,    // (out) array of dimension lwork, whic is the output
 			int * lwork,      // (in) for JOBZ='V' has to be >= max (1, 12*N)
 			double * iwork,   // (out) same as work
-			double * liwork,  // (in) for JOBZ='V' has to be >= max (1, 10*N)
+			int * liwork,     // (in) for JOBZ='V' has to be >= max (1, 10*N)
 			int * Info);      // (out) =0 for successfull operation
 
 	char JOBZ   =   'V',
@@ -356,8 +360,8 @@ static long MRRR (hod * u)
 	
 	int LDZ    = u->N,
 	    NZC    = u->N,
-	    ISUPPZ = (int *) malloc (2*u->N * sizeof (int)),
-	    TRYRAY = 1, // I hope this means 'yes, check for precision :D'
+	    * ISUPPZ = (int *) malloc (2*u->N * sizeof (int)),
+	    TRYRAC = u->tryrac, // I hope this means 'yes, check for precision :D'
 	    LWORK  = 12*u->N,
 	    LIWORK = 10*u->N,
 	    INFO;
@@ -367,7 +371,7 @@ static long MRRR (hod * u)
 
 
 	dstemr_ (&JOBZ, &RANGE, &u->N, d, e, &VL, &VU, &IL, &IU, &M, u->e, u->v, &LDZ, &NZC,
-			ISUPPZ, &TRYRAY, WORK, &LWORK, IWORK, &LIWORK, &INFO);
+			ISUPPZ, &TRYRAC, WORK, &LWORK, IWORK, &LIWORK, &INFO);
 
 	free (d);
 	free (e);
@@ -378,4 +382,64 @@ static long MRRR (hod * u)
 	return INFO;
 }
 
+// calculate eigenvectors in the basis of Harminic potential
+void rotate (hod * u)
+{
+	// we have to multiply Lanczos and Eigenmatrix
+	
+	cblas_dgemm (CblasRowMajor, CblasNoTrans, CblasNoTrans, u->N, u->N, u->N, 1.0,
+			u->w, u->N, u->v, u->N, 0.0, u->H, u->N);
+
+	// now the former hamiltonian matrix contains the eigenvectors
+	// on its columns, and thus corresponds to the transposed matrix
+	// of cannonical diagonalization.
+}
+
+// diagonalize O(n^2)
+void diagO2 (hod * u)
+{
+	int info = MRRR (u);
+
+	if (info != 0)
+	{
+		fprintf (stderr, "Error %d! Unable to complete.\n", info);
+		exit (EXIT_FAILURE);
+	}
+
+	printf ("Accuracy: %d\n", u->tryrac);
+
+	// we just rotate to the correct base
+	rotate (u);
+}
+
+double phi (int n, double x)
+{
+	double norm = 1.0/(pow (M_PI, 0.25) * sqrt(gsl_sf_fact (n) * pow(2, n))),
+	       S = 0;
+
+	int i, N,
+	    k = n%2;
+
+	if (k == 0)
+	{
+		N = n/2;
+		for (i = 0; i <= N; i++)
+			S += pow((-1), N - i)*pow(2*x, 2*i)/(gsl_sf_fact(2*i)*gsl_sf_fact(N - i));
+
+		S *= norm * gsl_sf_fact (n) * exp ((-0.5)*x*x);
+	}
+
+	else if (k == 1)
+	{
+		N = (n - 1)/2;
+		for (i = 0; i <= N; i++)
+			S += pow((-1), N - i)*pow(2*x, 2*i+1)/(gsl_sf_fact(2*i+1)*gsl_sf_fact(N-i));
+
+		S *= norm * gsl_sf_fact (n) * exp ((-0.5)*x*x);
+	}
+
+	return S;
+}
+
 #endif
+
