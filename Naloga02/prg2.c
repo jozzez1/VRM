@@ -29,7 +29,7 @@ int main (int argc, char ** argv)
 
 	opterr = 1;
 
-	while ((arg = getopt (argc, argv, "h:L:a:t:N:F:p:n:T:o:ldey")) != -1)
+	while ((arg = getopt (argc, argv, "h:L:a:t:N:F:D:p:n:T:o:ldey")) != -1)
 	{
 		switch (arg)
 		{
@@ -121,7 +121,7 @@ int main (int argc, char ** argv)
 	else if (u->d == 0)
 	{
 		char * savenplot = (char *) malloc (40 * sizeof (char));
-		sprintf (savenplot, "./plot.sh %s.txt %d", u->dat, y);
+		sprintf (savenplot, "./plot.sh %s %d", u->dat, y);
 		one_big_txt (u);
 		system (savenplot);
 	}

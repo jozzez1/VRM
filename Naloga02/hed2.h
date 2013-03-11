@@ -12,6 +12,7 @@
 #include <string.h>
 #include <math.h>
 #include <cblas.h>
+#include <stdlib.h>
 
 typedef struct
 {
@@ -277,6 +278,7 @@ void init (hod * u, double h, double L, double a, double t, int N,
 
 	u->H = (double *) calloc (M, sizeof(double));
 	u->v = (double *) malloc (M * sizeof (double));
+	u->w = (double *) malloc (M * sizeof (double));
 	u->DT = (double *) malloc (u->N * sizeof (double));
 	u->ST = (double *) malloc (D * sizeof (double));
 	u->E = (double *) malloc (u->N * sizeof (double));
@@ -356,7 +358,7 @@ static long MRRR (hod * u)
 			int * nzc,        // number of eigenvectors to be held in z
 			int * isuppz,     // (out) integer array ... dimension 2*max(1,M)
 			int * tryrac,     // (in/out) logical (int or long int) for high accuracy
-			double * work,    // (out) array of dimension lwork, whic is the output
+			double * work,    // (out) array of dimension lwork, which is the output
 			int * lwork,      // (in) for JOBZ='V' has to be >= max (1, 12*N)
 			double * iwork,   // (out) same as work
 			int * liwork,     // (in) for JOBZ='V' has to be >= max (1, 10*N)
@@ -365,22 +367,25 @@ static long MRRR (hod * u)
 	char JOBZ   =   'V',
 	     RANGE  =   'A';
 
-	int i = u->N-1;
+	int val = u->N-1,
+	    i;
 
 	double * d = (double *) malloc (u->N * sizeof(double)),
-	       * e = (double *) malloc (i * sizeof (double));
+	       * e = (double *) malloc (val * sizeof (double));
 	
-	for (i = 0; i <= u->N - 1; i++)
+	for (i = 0; i <= u->N - 2; i++)
 	{
 		d[i] = u->DT[i];
 		e[i] = u->ST[i];
 	}
+	d[u->N - 1] = u->DT[i];
 
 	double VL = 0,
 	       VU = 1;
 
 	int IL = 0,
 	    IU = 1,
+	    ispz = 2 * u->N,
 	    M;
 
 	// for 'w' I will use 'u->e' -- already an array
@@ -388,24 +393,26 @@ static long MRRR (hod * u)
 	
 	int LDZ    = u->N,
 	    NZC    = u->N,
-	    * ISUPPZ = (int *) malloc (2*u->N * sizeof (int)),
 	    TRYRAC = u->tryrac, // I hope this means 'yes, check for precision :D'
-	    LWORK  = 12*u->N,
-	    LIWORK = 10*u->N,
+	    LWORK  = 28*u->N,
+	    LIWORK = 18*u->N,
 	    INFO;
+	
+	int * ISUPPZ = (int *) malloc (ispz * sizeof (int));
 
 	double * WORK  = (double *) malloc (LWORK * sizeof (double)),
 	       * IWORK = (double *) malloc (LIWORK * sizeof (double));
 
-
 	dstemr_ (&JOBZ, &RANGE, &u->N, d, e, &VL, &VU, &IL, &IU, &M, u->E, u->v, &LDZ, &NZC,
 			ISUPPZ, &TRYRAC, WORK, &LWORK, IWORK, &LIWORK, &INFO);
 
-	free (d);
-	free (e);
-	free (ISUPPZ);
-	free (WORK);
-	free (IWORK);
+// if I deallocate but one of them I get a SEGSIGV ...
+// until I figure what to do, I'll comment these out
+//	free (d);
+//	free (e);
+//	free (ISUPPZ);
+//	free (WORK);
+//	free (IWORK);
 
 	return INFO;
 }
@@ -414,8 +421,10 @@ static long MRRR (hod * u)
 void rotate (hod * u)
 {
 	// we have to multiply Lanczos and Eigenmatrix
-	
-	cblas_dgemm (CblasRowMajor, CblasNoTrans, CblasNoTrans, u->N, u->N, u->N,
+	// H = w*v
+	// w -- lanczos         -- it's ok ... row major ordering ;)
+	// v -- diagonalization	-- because of fortran it is in column major ordering
+	cblas_dgemm (CblasRowMajor, CblasNoTrans, CblasTrans, u->N, u->N, u->N,
 			1.0, u->w, u->N, u->v, u->N, 0.0, u->H, u->N);
 
 	// now the former hamiltonian matrix contains the eigenvectors
@@ -423,16 +432,35 @@ void rotate (hod * u)
 	// of cannonical diagonalization.
 }
 
+void eigen_dump (hod *u)
+{
+		char * eigen = (char *) malloc (12 * sizeof (char));
+		sprintf (eigen, "Energies-N%d.txt", u->N);
+
+		FILE * fout = fopen (eigen, "w");
+		free (eigen);
+
+		int i;
+		for (i = 0; i <= u->N - 1; i++)
+			fprintf (fout, "% 4d % 15.8lf\n", i, u->E[i]);
+
+		fclose (fout);
+}
+
 // diagonalize O(n^2)
 void diag_MRRR (hod * u)
 {
-	int info = MRRR (u);
+	int info = MRRR (u),
+	    i;
 
 	if (info != 0)
 	{
 		fprintf (stderr, "Error %d! Unable to complete.\n", info);
 		exit (EXIT_FAILURE);
 	}
+
+	for (i = 0; i <= u->N - 1; i++)
+		printf ("% 4d % 15.8lf\n", u->N-1-i, u->E[u->N-1-i]);
 
 	printf ("Accuracy: %d\n", u->tryrac);
 
@@ -478,18 +506,18 @@ void init_v (hod * u)
 
 	// we initialize the real part
 	for (i = 0; i <= u->N - 1; i++)
-		u->DT [i] = phi (u->n, u->h * (i - 0.5*u->N - u->a));
+		u->DT [i] = phi (u->n, u->h * (i - 0.5*u->N) - u->a);
 
 	// we have to modify the imaginary part -- ST
-	u->ST = (double *) realloc ((double *) u->ST, u->N);
+	u->ST = (double *) realloc ((double *) u->ST, u->N * sizeof (double));
 	for (i = 0; i <= u->N - 1; i++)
 		u->ST [i] = 0.0;
 
 	// we shall also reuse the v and w:
 	// v shall be DT in psi space
 	// w shall be ST in psi space
-	u->v = (double *) realloc ((double *) u->v, u->N);
-	u->w = (double *) realloc ((double *) u->w, u->N);
+	u->v = (double *) realloc ((double *) u->v, u->N * sizeof (double));
+	u->w = (double *) realloc ((double *) u->w, u->N * sizeof (double));
 
 	// the actual transformations into psi space
 	cblas_dgemv (CblasRowMajor, CblasTrans, u->N, u->N,
@@ -505,10 +533,11 @@ void time_step (hod * u)
 	for (i = 0; i <= u->N - 1; i++)
 	{
 		double v = u->v[i],
+		       w = u->w[i],
 		       a = u->E[i]*u->t;
 
-		u->v[i] = u->v[i]*cos (a) + u->w[i]*sin (a);
-		u->w[i] = u->w[i]*cos (a) - v * sin (a);
+		u->v[i] = v*cos (a) + w*sin (a);
+		u->w[i] = w*cos (a) - v*sin (a);
 	}
 
 	// now we change them back into x-space
@@ -570,12 +599,10 @@ void one_big_txt (hod * u)
 	for (i = 0; i <= u->N - 1; i++)
 	{
 		double x = u->h * (i - 0.5 * u->N),
-		       P = pow(u->DT[i], 2) + pow(u->ST[i], 2),
-		       V = pot (u, i),
 		       t = u->k * u->t;
 
 		fprintf (fout, "% 15lf % 15.8lf % 15.8lf % 15.8lf\n",
-				t, x, P, V);
+				t, x, u->DT[i], u->ST[i]);
 	}
 	fprintf (fout, "\n");
 
@@ -586,26 +613,15 @@ void one_big_txt (hod * u)
 		for (i = 0; i <= u->N - 1; i++)
 		{
 			double x = u->h * (i - 0.5 * u->N),
-			       P = pow(u->DT[i], 2) + pow(u->ST[i], 2),
-			       V = pot (u, i),
 			       t = u->k * u->t;
 	
 			fprintf (fout, "% 15lf % 15.8lf % 15.8lf % 15.8lf\n",
-					t, x, P, V);
+					t, x, u->DT[i], u->ST[i]);
 		}
 		fprintf (fout, "\n");
 	}
 
 	fclose (fout);
-}
-
-void output (hod * u)
-{
-	if (u->d == 1)
-		create_frames (u);
-
-	else
-		one_big_txt (u);
 }
 
 #endif
