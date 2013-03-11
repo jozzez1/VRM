@@ -410,7 +410,7 @@ static long MRRR (hod * u)
 	return INFO;
 }
 
-// calculate eigenvectors in the basis of Harminic potential
+// calculate eigenvectors in the basis of Harmonic potential
 void rotate (hod * u)
 {
 	// we have to multiply Lanczos and Eigenmatrix
@@ -424,7 +424,7 @@ void rotate (hod * u)
 }
 
 // diagonalize O(n^2)
-void diagO2 (hod * u)
+void diag_MRRR (hod * u)
 {
 	int info = MRRR (u);
 
@@ -597,6 +597,15 @@ void one_big_txt (hod * u)
 	}
 
 	fclose (fout);
+}
+
+void output (hod * u)
+{
+	if (u->d == 1)
+		create_frames (u);
+
+	else
+		one_big_txt (u);
 }
 
 #endif
