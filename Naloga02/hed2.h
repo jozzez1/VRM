@@ -394,8 +394,8 @@ static long MRRR (hod * u)
 	int LDZ    = u->N,
 	    NZC    = u->N,
 	    TRYRAC = u->tryrac, // I hope this means 'yes, check for precision :D'
-	    LWORK  = 28*u->N,
-	    LIWORK = 18*u->N,
+	    LWORK  = 18*u->N,
+	    LIWORK = 10*u->N,
 	    INFO;
 	
 	int * ISUPPZ = (int *) malloc (ispz * sizeof (int));
@@ -553,6 +553,7 @@ void dump_step (hod * u)
 
 	// we will have to use a mkdir somewhere ...
 	sprintf (ani, "%s/%05d.txt", u->dat, u->k);
+	printf ("%s\n", ani);
 
 	FILE * fout = fopen (ani, "w");
 	free (ani);
@@ -605,6 +606,7 @@ void one_big_txt (hod * u)
 				t, x, u->DT[i], u->ST[i]);
 	}
 	fprintf (fout, "\n");
+	printf ("t = %d\n", u->k);
 
 	for (u->k = 1; u->k <= u->T - 1; u->k++)
 	{
@@ -614,11 +616,12 @@ void one_big_txt (hod * u)
 		{
 			double x = u->h * (i - 0.5 * u->N),
 			       t = u->k * u->t;
-	
+			
 			fprintf (fout, "% 15lf % 15.8lf % 15.8lf % 15.8lf\n",
 					t, x, u->DT[i], u->ST[i]);
 		}
 		fprintf (fout, "\n");
+		printf ("t = %d\n", u->k);
 	}
 
 	fclose (fout);
