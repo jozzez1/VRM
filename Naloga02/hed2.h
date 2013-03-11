@@ -7,25 +7,35 @@
 #include <gsl/gsl_matrix.h>
 #include <gsl/gsl_vector.h>
 #include <gsl/gsl_sf_gamma.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <string.h>
 #include <math.h>
 #include <cblas.h>
 
 typedef struct
 {
-	double h,
-	       L;
+	double h,     // space discretization
+	       L,     // lambda ... parameter of potential
+	       a,     // f(x) -> f(x - a)
+	       t;     // time step
 
-	int N,
+	int N,        // rank of the matrices
 	    tryrac,   // accuracy "boolean"
-	    p;        // approximation order of the 2nd derivative
+	    p,        // approximation order of the 2nd derivative
+	    n,        // which vector do we want for initial condition
+	    d,        // animation flag
+	    k,        // current time iteration
+	    T;        // number of time iterations
 
-	double * H,   // Hamiltonian, oz. na koncu matrika v
+	double * H,   // Hamiltonian, in the end matrix v
 	       * v,   // eigenvector matrix in Lanczos space
 	       * w,   // Lanczos transformation matrix
 	       * DT,  // dominant of tridiagonal
 	       * ST,  // subdiagonal of tridiagonal
-	       * phi, // starting vector
-	       * e;   // eigenvalue array
+	       * E;   // eigenvalue array -- energies ...
+	
+	char * dat;
 } hod;
 
 // potential
@@ -207,7 +217,8 @@ void Lanczos (hod * u)
 
 	for (i = 0; i <= u->N-2; i++)
 	{
-		cblas_dsymv (CblasRowMajor, CblasUpper, u->N, 1.0, u->H, u->N, v1, 1, 0.0, w, 1);
+		cblas_dsymv (CblasRowMajor, CblasUpper, u->N,
+				1.0, u->H, u->N, v1, 1, 0.0, w, 1);
 		a[i] = scalar (w, v1, u->N);
 
 		int j;
@@ -225,7 +236,8 @@ void Lanczos (hod * u)
 		}
 	}
 
-	cblas_dsymv (CblasRowMajor, CblasUpper, u->N, 1.0, u->H, u->N, v1, 1, 0.0, w, 1);
+	cblas_dsymv (CblasRowMajor, CblasUpper, u->N,
+			1.0, u->H, u->N, v1, 1, 0.0, w, 1);
 	a[u->N-1] = scalar (w, v1, u->N);
 
 	// we feed those parameters to the struct
@@ -245,12 +257,19 @@ void Lanczos (hod * u)
 }
 
 // struct initializer
-void init (hod * u, double h, double L, int N, int p, int tryrac)
+void init (hod * u, double h, double L, double a, double t, int N,
+		int p, int d, int tryrac, int n, int T, char * dat)
 {
 	u->h = h;
 	u->L = L;
+	u->a = a;
+	u->t = t;
 	u->N = N;
 	u->p = p;
+	u->n = n;
+	u->T = T;
+	u->d = d;
+	u->k = 0;
 	u->tryrac = tryrac;
 
 	int M = u->N * u->N,
@@ -260,7 +279,15 @@ void init (hod * u, double h, double L, int N, int p, int tryrac)
 	u->v = (double *) malloc (M * sizeof (double));
 	u->DT = (double *) malloc (u->N * sizeof (double));
 	u->ST = (double *) malloc (D * sizeof (double));
-	u->e = (double *) malloc (u->N * sizeof (double));
+	u->E = (double *) malloc (u->N * sizeof (double));
+	u->dat = (char *) malloc (15 * sizeof (char));
+
+	if (dat == NULL)
+		sprintf (u->dat, "nal-N%d-L%d-a%d",
+				u->N, (int) (100 * u->L), (int) u->a);
+
+	else
+		strcpy (u->dat, dat);
 
 	// we fill the hamiltonian
 	switch (u->p)
@@ -298,15 +325,16 @@ void destroy (hod * u)
 {
 	free (u->H);
 	free (u->v);
+	free (u->w);
 	free (u->DT);
 	free (u->ST);
-	free (u->e);
+	free (u->E);
 
 	free (u);
 }
 
 
-// now to diagonalize this baby with this handy wrapper ...
+// now to diagonalize this baby with this handy f77 wrapper ...
 // compile with: -llapack -lblas -lcblas -latlas
 // for fortran code ALL arguments must be passed as pointers
 static long MRRR (hod * u)
@@ -327,7 +355,7 @@ static long MRRR (hod * u)
 			int * ldz,        // leading dimension of the array
 			int * nzc,        // number of eigenvectors to be held in z
 			int * isuppz,     // (out) integer array ... dimension 2*max(1,M)
-			int * tryrac,     // (in/out) logical (int or long int) ... for high accuracy
+			int * tryrac,     // (in/out) logical (int or long int) for high accuracy
 			double * work,    // (out) array of dimension lwork, whic is the output
 			int * lwork,      // (in) for JOBZ='V' has to be >= max (1, 12*N)
 			double * iwork,   // (out) same as work
@@ -370,7 +398,7 @@ static long MRRR (hod * u)
 	       * IWORK = (double *) malloc (LIWORK * sizeof (double));
 
 
-	dstemr_ (&JOBZ, &RANGE, &u->N, d, e, &VL, &VU, &IL, &IU, &M, u->e, u->v, &LDZ, &NZC,
+	dstemr_ (&JOBZ, &RANGE, &u->N, d, e, &VL, &VU, &IL, &IU, &M, u->E, u->v, &LDZ, &NZC,
 			ISUPPZ, &TRYRAC, WORK, &LWORK, IWORK, &LIWORK, &INFO);
 
 	free (d);
@@ -387,8 +415,8 @@ void rotate (hod * u)
 {
 	// we have to multiply Lanczos and Eigenmatrix
 	
-	cblas_dgemm (CblasRowMajor, CblasNoTrans, CblasNoTrans, u->N, u->N, u->N, 1.0,
-			u->w, u->N, u->v, u->N, 0.0, u->H, u->N);
+	cblas_dgemm (CblasRowMajor, CblasNoTrans, CblasNoTrans, u->N, u->N, u->N,
+			1.0, u->w, u->N, u->v, u->N, 0.0, u->H, u->N);
 
 	// now the former hamiltonian matrix contains the eigenvectors
 	// on its columns, and thus corresponds to the transposed matrix
@@ -412,6 +440,7 @@ void diagO2 (hod * u)
 	rotate (u);
 }
 
+// eigenvectors for harmonic potential
 double phi (int n, double x)
 {
 	double norm = 1.0/(pow (M_PI, 0.25) * sqrt(gsl_sf_fact (n) * pow(2, n))),
@@ -439,6 +468,135 @@ double phi (int n, double x)
 	}
 
 	return S;
+}
+
+// we can put initial vector in unused u->DT and u->ST
+// to propagate them through time
+void init_v (hod * u)
+{
+	int i;
+
+	// we initialize the real part
+	for (i = 0; i <= u->N - 1; i++)
+		u->DT [i] = phi (u->n, u->h * (i - 0.5*u->N - u->a));
+
+	// we have to modify the imaginary part -- ST
+	u->ST = (double *) realloc ((double *) u->ST, u->N);
+	for (i = 0; i <= u->N - 1; i++)
+		u->ST [i] = 0.0;
+
+	// we shall also reuse the v and w:
+	// v shall be DT in psi space
+	// w shall be ST in psi space
+	u->v = (double *) realloc ((double *) u->v, u->N);
+	u->w = (double *) realloc ((double *) u->w, u->N);
+
+	// the actual transformations into psi space
+	cblas_dgemv (CblasRowMajor, CblasTrans, u->N, u->N,
+			1.0, u->H, u->N, u->DT, 1, 0.0, u->v, 1);
+	cblas_dgemv (CblasRowMajor, CblasTrans, u->N, u->N,
+			1.0, u->H, u->N, u->ST, 1, 0.0, u->w, 1);
+}
+
+void time_step (hod * u)
+{
+	int i;
+
+	for (i = 0; i <= u->N - 1; i++)
+	{
+		double v = u->v[i],
+		       a = u->E[i]*u->t;
+
+		u->v[i] = u->v[i]*cos (a) + u->w[i]*sin (a);
+		u->w[i] = u->w[i]*cos (a) - v * sin (a);
+	}
+
+	// now we change them back into x-space
+	cblas_dgemv (CblasRowMajor, CblasNoTrans, u->N, u->N,
+			1.0, u->H, u->N, u->v, 1, 0.0, u->DT, 1);	
+	cblas_dgemv (CblasRowMajor, CblasNoTrans, u->N, u->N,
+			1.0, u->H, u->N, u->w, 1, 0.0, u->ST, 1);
+}
+
+void dump_step (hod * u)
+{
+	char * ani = (char *) malloc (30 * sizeof (char));
+
+	// we will have to use a mkdir somewhere ...
+	sprintf (ani, "%s/%05d.txt", u->dat, u->k);
+
+	FILE * fout = fopen (ani, "w");
+	free (ani);
+
+	int i;
+	for (i = 0; i <= u->N - 1; i++)
+	{
+		double x = u->h * (i - 0.5 * u->N),
+		       P = pow(u->DT[i], 2) + pow(u->ST[i], 2),
+		       V = pot (u, i);
+
+		fprintf (fout, "% 15.8lf % 15.8lf % 15.8lf\n", x, P, V);
+	}
+	fprintf (fout, "\n");
+	fclose (fout);
+}
+
+void create_frames (hod * u)
+{
+	// we create the appropriate directory for our
+	// frames
+	int status;
+	status = mkdir (u->dat, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+
+	dump_step (u);
+	
+	for (u->k = 1; u->k <= u->T-1; u->k++)
+	{
+		time_step (u);
+		dump_step (u);
+	}
+}
+
+void one_big_txt (hod * u)
+{
+	char * dat = (char *) malloc (20 * sizeof(char));
+
+	sprintf (dat, "%s.txt", u->dat);
+
+	FILE * fout = fopen (dat, "w");
+	free (dat);
+
+	int i;
+	for (i = 0; i <= u->N - 1; i++)
+	{
+		double x = u->h * (i - 0.5 * u->N),
+		       P = pow(u->DT[i], 2) + pow(u->ST[i], 2),
+		       V = pot (u, i),
+		       t = u->k * u->t;
+
+		fprintf (fout, "% 15lf % 15.8lf % 15.8lf % 15.8lf\n",
+				t, x, P, V);
+	}
+	fprintf (fout, "\n");
+
+	for (u->k = 1; u->k <= u->T - 1; u->k++)
+	{
+		time_step (u);
+
+		for (i = 0; i <= u->N - 1; i++)
+		{
+			double x = u->h * (i - 0.5 * u->N),
+			       P = pow(u->DT[i], 2) + pow(u->ST[i], 2),
+			       V = pot (u, i),
+			       t = u->k * u->t;
+	
+			fprintf (fout, "% 15lf % 15.8lf % 15.8lf % 15.8lf\n",
+					t, x, P, V);
+		}
+		fprintf (fout, "\n");
+	}
+
+	fclose (fout);
 }
 
 #endif

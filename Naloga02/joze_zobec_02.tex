@@ -161,7 +161,8 @@ unitarnosti postane ortogonalnost. Kvadratno formo naše matrike zapišemo kot
 \]
 
 kjer je $L$ matrika Lanczosove transformacije -- rotira spet v ortonormalno bazo istega prostora, torej mora biti ortogonalna, kot zgornji
-izraz tudi predpostavi. V tej bazi je matrika A tridiagonalna. Izvesti moramo še diagonalizacijo z matriko $V$
+izraz tudi predpostavki. Ker je ta matrika ortogonalna pomeni da ohranja spekter matrike $A$. V tej bazi je matrika $A$ tridiagonalna.
+Izvesti moramo še diagonalizacijo z matriko $V$
 
 \begin{align*}
 	x^T L^T L A L^T L x &= x^T L^T V^T V L A L^T V^T V L x \\
@@ -196,8 +197,9 @@ oscilatorja.
 Vendar pa ta baza ni dobra iz dveh razlogov:
 \begin{enumerate}
 	\item{Hermitovi polinomi so ortogonalni v zveznem prostoru -- ortogonalnst se z diskretizacijo močno pokvari za polinome
-		visokih redov. Potem sploh ni
-		važno, če računamo z diferenčno shemo $\mathcal{O}(h^8)$, če je ena izmed rotacijskih matrik slabo ortogonalna.}
+		visokih redov. Potem sploh ni važno, če računamo z diferenčno shemo $\mathcal{O}(h^8)$, če je ena izmed rotacijskih
+		matrik slabo ortogonalna. Torej moramo za pridobitev te matrike še enkrat prej izvesti diagonalizacijo za dobro
+		ortogonalnost, kar pa je potrata časa.}
 	\item{Če pričnemo v taki bazi ne vemo kako zapisati koherentno stanje. Seveda, lahko ga zapišemo v bazi $\big\{|x_n\rangle\big\}$,
 		in ga potem transformiramo v $\big\{|\phi_n\rangle\big\}$, vendar je to potrata časa.}
 \end{enumerate}
@@ -210,5 +212,11 @@ povezuje $\big\{|x_n\rangle\big\}$ in $\big\{|\psi_n\rangle\big\}$ zapiše kot
 \]
 
 tako dobimo $\psi_{n,m} = \psi_n (x_m)$ in pa lastne vektorje $\underline{\psi}_n$.
+
+Simetrične tridiagonalne matrike lahko diagonaliziramo z metodo MRRR\footnote{Multiple Relatively Robust Representations}, ki za
+diagonalizacijo $k$ lastnih vrednosti matrike ranga $N$ potrebuje le $\mathcal{O} (kN)$ operacij, kar pomeni da ima ta hip
+najmanj slabo časovno zahtevnost. V primeru, ko želimo izračunati vse lastne vrednosti ima zahtevnost $\mathcal{O}(N^2)$ za
+matrike ranga $N$. Uporabil sem rutino {\tt DSTEMR} iz knjižnjice {\sc Lapack}, ki avtomatsko skuša doseči preciznost na
+osem decimalnih mest.
 
 \end{document}
