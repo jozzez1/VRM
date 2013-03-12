@@ -124,14 +124,14 @@ int main (int argc, char ** argv)
 		if (dat == NULL)
 		{
 			dat = (char *) malloc (40*sizeof(char));
-			sprintf (dat, "ratio-L%d.txt", (int) (10 * L));
+			sprintf (dat, "ratio-L%d.txt", (int) (100 * L));
 		}
 
 		vozi (L, a, t, g, N, p, d, tryrac, n, T, dat, v);
 		printf ("Written in %s\n", dat);
 		
 		char * command = (char *) malloc (55 * sizeof (char));
-		sprintf (command, "./plot2.sh %d %s %d", v, dat, y);
+		sprintf (command, "./plot2.sh %d %s %d", 1, dat, y);
 		
 		system (command);
 
@@ -192,7 +192,11 @@ int main (int argc, char ** argv)
 	{
 		test_suite (u, I);
 		printf ("Written in file h-of-N.txt\n");
-		system ("./plot2.sh 0 0 0");
+		char * command = (char *) malloc (40 * sizeof (char));
+		sprintf (command, "./plot2.sh 0 0 %d", y);
+
+		system (command);
+		free (command);
 	}
 	destroy (u);
 
