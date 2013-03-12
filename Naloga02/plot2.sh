@@ -33,7 +33,7 @@ if [ ${MODE} -eq 0 ]; then
 		\"h-of-N.txt\" u 1:3 lt 3 title 'good' axes x1y2" | gnuplot -p
 
 		echo "reset;
-		set term epslatex color solid size 8cm,4cm;
+		set term epslatex color solid size 14cm,7cm;
 		set output \"calibrate.tex\";
 		set ylabel 'h';
 		set xlabel 'N';
@@ -55,18 +55,18 @@ else
 	set ylabel 'r';
 	set xlabel 'N';
 	f(x) = a*(x**b);
-	fit f(x) \"ratio-L1-fit.txt\" u 1:2 via a, b;
+	fit f(x) \"ratio-L0-fit.txt\" u 1:2 via a, b;
 	plot \"$DATA\" u 1:2 title '', f(x) lt -1 title 'fit'" | gnuplot -p
 
-	if [ "$SAVE" != "1" ]; then
+	if [ ${SAVE} -eq 1 ]; then
 		echo "reset;
 		set key top left;
-		set term epslate color solid size 8cm,4cm;
-		set output \"Lambda.tex\";
+		set term epslatex color solid size 14cm,7cm;
+		set output \"Lambda0.tex\";
 		set xlabel 'N';
 		set ylabel 'r';
 		f(x) = a*(x**b);
-		fit f(x) \"ratio-L1-fit.txt\" u 1:2 via a, b;
+		fit f(x) \"ratio-L0-fit.txt\" u 1:2 via a, b;
 		plot \"$DATA\" u 1:2 title '', f(x) lt -1 title 'fit'" | gnuplot -p
 	fi
 

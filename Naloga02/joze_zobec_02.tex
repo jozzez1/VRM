@@ -23,6 +23,8 @@ V tej nalogi iščemo lastne funkcije prejšnje naloge. Problem bi radi reševal
 ker se problem v tem primeru razcepi na časovni del, ki ga znamo rešiti (rešitev je
 $\exp(-iE_n)$) in na krajevni del, ki je rešitev amplitudne enačbe.
 
+\section{Diskretizacija}
+
 Lastne baze $\big\{|\psi_n\rangle\big\}$ ne poznamo, vendar lahko problem vseeno še vedno
 rešujemo v neperturburani bazi $\big\{|\phi_n\rangle\big\}$. Vsako funkcijo $|\psi_n\rangle$
 lahko potem zapišemo kot
@@ -213,11 +215,13 @@ povezuje $\big\{|x_n\rangle\big\}$ in $\big\{|\psi_n\rangle\big\}$ zapiše kot
 
 tako dobimo $\psi_{n,m} = \psi_n (x_m)$ in pa lastne vektorje $\underline{\psi}_n$.
 
+\section{Računske metode}
+
 Simetrične tridiagonalne matrike lahko diagonaliziramo z metodo MRRR\footnote{Multiple Relatively Robust Representations}, ki za
 diagonalizacijo $k$ lastnih vrednosti matrike ranga $N$ potrebuje le $\mathcal{O} (kN)$ operacij, kar pomeni da ima ta hip
 najmanj slabo časovno zahtevnost. V primeru, ko želimo izračunati vse lastne vrednosti ima zahtevnost $\mathcal{O}(N^2)$ za
 matrike ranga $N$. Uporabil sem rutino {\tt DSTEMR} iz knjižnjice {\sc Lapack}, ki skuša avtomatsko doseči preciznost na
-osem decimalnih mest.
+osem decimalnih mest. Metoda je hitra in matriko $2000\times2000$ diagonalizira v slabi sekuni.
 
 Število točnih lastnih vrednosti ni odvisno le od $N$, pač pa tudi od $h$, oz. bolje, $h$ v resnici ni neodvisen parameter,
 pač pa je odvisen od $N$.
@@ -231,6 +235,107 @@ Za vsak $N$ torej obstaja nek optimalni $h$, ki najbolje opiše naš problem. Do
 razmerje slabih lastnih vrednosti proti dobrim lastnim vrednostim najmanjše. Sicer lahko to s poskušanjem bolj ali manj uganemo,
 vendar to traja kar veliko časa. To lahko za nas stori tudi računalnik.
 
-Parameter $h$ ima skrito odvisnost od $N$ zaradi tega, ker z njim omogočamo optimalno ortogonalnost Lanczosove matrike.
+Parameter $h$ ima skrito odvisnost od $N$ zaradi tega, ker z njim omogočamo optimalno ortogonalnost Lanczosove matrike. Funkcijo
+$h(N)$ sem določil z minimizacijo -- za nek $N$ sem vzel tisti $h$, pri katerem je največ lastnih vrednosti harmonskega oscilatorja
+pravilnih. S "`fitanjem"' sem določil funkcijo $h(N)$. $h$ ima sicer tudi odvisnost od $\lambda$, vendar sem jo zanemaril ter
+$h(N)$ za anharmonski oscilator aproksimiral z isto funkcijo.
+
+\section{Rezultati}
+
+Najprej je bilo treba določiti $h(N)$ za kalibracijo.
+
+\begin{figure}[H]
+	\begin{center}
+		\input{calibrate.tex}
+	\end{center}
+	\vspace{-20pt}
+	\caption{$h$ pada z $N$, kar je smiselno. Fital sem z $h(N) = a/N^b$. S to funkcijo sem potem kalibriral svoje
+nadaljne podvige. Desna ordinatna os prikazuje število lastnih Energij, ki je točnih na 3 decimalna mesta.}
+	\label{kalibracija}
+	\vspace{-10pt}
+\end{figure}
+
+Za vsak $N$ sem z minimizacijo določil optimalen $h$. Uporabil sem funkcijo {\tt gsl\_min\_fminimizer\_brent} iz knjižnjice
+{\tt GSL}, ki je Brentov minimizacijski algoritem. Z regresijskimi minimizatorji iz orodja {\tt gnuplot} sem določil $h(N)$:
+
+\[
+	h \approx 18.90610 N^{-0.916111},
+\]
+
+Pokažimo energijski spekter:
+
+\begin{figure}[H]
+	\begin{center}
+		\input{spectre.tex}
+	\end{center}
+	\vspace{-20pt}
+	\caption{Na tej sliki vidimo spekter prvih nekaj lasnih energij in primerjavo s točnimi vrednostmi
+		harmonskega oscilatorja.}
+	\label{Energije}
+	\vspace{-10pt}
+\end{figure}
+
+Prvih sto se relativno dobro ujema, potem pa se pozna razcep. Z višanjem $\lambda$ se nam spremeni cel spekter. Razklop
+se pozna že pri prvi lastni vrednosti.
+
+\subsection{Časovni razvoj}
+
+Časovni razvoj je natančnejši, kot je bil prej. Tu sem delal s sedem-diagonalno matriko, ker je devet-diagonalna dajala
+preveč šuma in je bila animacija videti kot naravnost iz osciloskopa.
+
+Čeprav je metoda natančnejša, ima žal višjo računsko zahtevnost. Vseeno ni nič zato. Matriko lahko zelo hitro diagonaliziramo
+in vektor samo množimo z matriko.
+
+Graf~\ref{časovni1} pride še posebej lep. Metoda iz prejšnje naloge je v prisotnosti anharmonskega člena zahtevala ogromno
+natančnost za kratke čase, dala pa ni nič kaj posebnega. Tule temu ni tako in metoda ostane stabilna.
+
+%časovni razvoj
+\begin{figure}[H]
+	\centering
+	\includegraphics{nal-N2000-L0-a2}
+	\vspace{-20pt}
+	\caption{Časovni razvoj, ki je natančnejši od tistega prej. To je primer za $\lambda = 0$. $N = 2000$.
+		K poročilu prikladam še animacijo -- datoteka {\tt nal-N2000-L0-a2.avi}.}
+	\label{časovni0}
+\end{figure}
+\begin{figure}[H]
+	\centering
+	\includegraphics{nal-N2000-L1-a2}
+	\vspace{-20pt}
+	\caption{Časovni razvoj, ki je natančnejši od tistega prej. To je primer za $\lambda = 0.01$. $N = 2000$.
+		K poročilu prikladam še animacijo -- datoteka {\tt nal-N2000-L1-a.avi}, ki pove več kot slika.}
+	\label{časovni1}
+\end{figure}
+
+\subsection{Konvergenca lastnih vrednosti}
+
+Zadnja naloga pravi, da naj spremljamo še konvergenco lastnih vrednosti v odvisnosti od dimenzije Hamiltoniana. Tu pride
+$h(N)$ še posebej prav, saj $h(N)$ relativno dobro aproksimira optimalne $h$-je.
+
+\begin{figure}[H]
+	\begin{center}
+		\input{Lambda0.tex}
+	\end{center}
+	\vspace{-20pt}
+	\caption{Graf prikazuje število lastnih energij, ki se med dvema zaporednima korakoma niso premaknile za več kot
+	$\epsilon = 0.001$. To je primer za harmonski oscilator. V fit nisem vključil točk, ki ležijo zunaj -- so namreč
+	posledica nepopolnosti algoritma ter kalibracijske napake.}
+	\label{Lambda0}
+	\vspace{-10pt}
+\end{figure}
+
+\begin{figure}[H]
+	\begin{center}
+		\input{Lambda1.tex}
+	\end{center}
+	\vspace{-20pt}
+	\caption{Isto, kot sl.~\ref{Lambda0}, le da je to primer za anharmonski oscilator, $\lambda = 0.01$. Tako kot prej
+	sem zanemaril ti."`outlierje"'.}
+	\label{Lambda1}
+	\vspace{-10pt}
+\end{figure}
+
+Sliki~\ref{Lambda0} in~\ref{Lambda1} sta taki, kot bi nekako pričakovali: strm začetek, nato pa začetna evforija poneha
+in graf se nadaljuje bolj položno.
 
 \end{document}
