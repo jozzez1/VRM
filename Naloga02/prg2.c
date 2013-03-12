@@ -1,4 +1,4 @@
-// prg1.c
+// prg2.c
 ////////////
 
 #include <stdio.h>
@@ -9,7 +9,7 @@
 
 int main (int argc, char ** argv)
 {
-	double h = 0.01,
+	double h = 0,
 	       L = 0,
 	       a = 0,
 	       t = 0.1;
@@ -18,18 +18,22 @@ int main (int argc, char ** argv)
 	    p = 4,
 	    tryrac = 1,
 	    n = 0,
+	    g = 3,
 	    d = 0,
 	    T = 100,
 	    D = 8,
 	    y = 0,
 	    e = 0,
+	    I = 0,
+	    A = 0,
+	    v = 0,
 	    arg;
 
 	char * dat = NULL;
 
 	opterr = 1;
 
-	while ((arg = getopt (argc, argv, "h:L:a:t:N:F:D:p:n:T:o:ldey")) != -1)
+	while ((arg = getopt (argc, argv, "h:L:a:t:N:F:D:p:n:T:I:o:g:v:lAdey")) != -1)
 	{
 		switch (arg)
 		{
@@ -70,11 +74,23 @@ int main (int argc, char ** argv)
 			case 'y':
 				y = 1;
 				break;
+			case 'g':
+				g = atoi (optarg);
+				break;
 			case 'e':
 				e = 1;
 				break;
+			case 'I':
+				I = atoi (optarg);
+				break;
+			case 'A':
+				A = 1;
+				break;
 			case 'D':
 				D = atoi (optarg);
+				break;
+			case 'v':
+				v = atoi (optarg);
 				break;
 			case 'l':
 				printf ("List of valid commands:\n\n");
@@ -87,7 +103,11 @@ int main (int argc, char ** argv)
 				printf ("[-F] (1) precision test\n");
 				printf ("[-T] (100) time iterations\n");
 				printf ("[-p] (4) order of 2nd derivative prec.\n");
+				printf ("[-g] (0.001) threshold for good eigenvalue\n");
 				printf ("[-n] (0) phi_n (x)\n");
+				printf ("[-A] (no) get the best possible h for given N\n");
+				printf ("[-I] (no) for calibration -- h (N)\n");
+				printf ("[-v] (0) get the good eigenvalues with increment\n");
 				printf ("[-y] (no) save the output -- 'yes'\n");
 				printf ("[-D] (8) duration of the animation in s\n");
 				printf ("[-o] (format) output filename\n");
@@ -99,48 +119,83 @@ int main (int argc, char ** argv)
 		}
 	}
 
+	if (v != 0)
+	{
+		if (dat == NULL)
+		{
+			dat = (char *) malloc (40*sizeof(char));
+			sprintf (dat, "ratio-L%d.txt", (int) (10 * L));
+		}
+
+		vozi (L, a, t, g, N, p, d, tryrac, n, T, dat, v);
+		printf ("Written in %s\n", dat);
+		
+		char * command = (char *) malloc (55 * sizeof (char));
+		sprintf (command, "./plot2.sh %d %s %d", v, dat, y);
+		
+		system (command);
+
+		free (dat);
+		free (command);
+
+		exit (EXIT_SUCCESS);
+	}
+
+	// optimiziran h
+	if (h == 0)
+		h = 1.78850/(pow (N, 0.614827)) - N * 3.28275e-6;
+
 	// we initialize the program
 	hod * u = (hod *) malloc (sizeof (hod));
-	init (u, h, L, a, t, N, p, d, tryrac, n, T, dat);
+	init (u, h, L, a, t, g, N, p, d, tryrac, n, T, dat);
 
-	// we now diagonalize the matrix
-	diag_MRRR (u);
-	rotate (u);
-
-	// calculate the time stuff
-	init_v (u);
-
-	if (u->d == 1)
+	if (I == 0)
 	{
-		char * animation = (char *) malloc (40 * sizeof (char));
-		sprintf (animation, "./anime.sh %s %d %d", u->dat, y, D);
-		create_frames (u);
-		system (animation);
+		// we now diagonalize the matrix
+		if (A == 0)
+			diag_MRRR (u);
+		else if (A == 1)
+			autoh (u);
+	
+		if (e == 0)
+		{
+			rotate (u);
+			init_v (u);
+	
+			if (u->d == 1)
+			{
+				char * animation = (char *) malloc (40 * sizeof (char));
+				sprintf (animation, "./anime.sh %s %d %d", u->dat, y, D);
+				create_frames (u);
+				system (animation);
+			}
+		
+			else
+			{
+				char * savenplot = (char *) malloc (40 * sizeof (char));
+				sprintf (savenplot, "./plot.sh %s %d", u->dat, y);
+				one_big_txt (u);
+				system (savenplot);
+			}
+		}
+	
+		else
+		{
+			eigen_output (u);
+			count_harmonic (u);
+			if (y == 1)
+				eigen_dump (u);
+		}
 	}
 
-	else if (u->d == 0)
+	else if (I != 0)
 	{
-		char * savenplot = (char *) malloc (40 * sizeof (char));
-		sprintf (savenplot, "./plot.sh %s %d", u->dat, y);
-		one_big_txt (u);
-		system (savenplot);
-	}
-
-	if (e == 1)
-	{
-		char * eigen = (char *) malloc (12 * sizeof (char));
-		sprintf (eigen, "Energies-N%d.txt", u->N);
-
-		FILE * fout = fopen (eigen, "w");
-		free (eigen);
-
-		int i;
-		for (i = 0; i <= u->N - 1; i++)
-			fprintf (fout, "% 4d % 15.8lf\n", i, u->E[i]);
-
-		fclose (fout);
+		test_suite (u, I);
+		printf ("Written in file h-of-N.txt\n");
+		system ("./plot2.sh 0 0 0");
 	}
 	destroy (u);
 
 	return 0;
 }
+

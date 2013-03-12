@@ -216,7 +216,21 @@ tako dobimo $\psi_{n,m} = \psi_n (x_m)$ in pa lastne vektorje $\underline{\psi}_
 Simetrične tridiagonalne matrike lahko diagonaliziramo z metodo MRRR\footnote{Multiple Relatively Robust Representations}, ki za
 diagonalizacijo $k$ lastnih vrednosti matrike ranga $N$ potrebuje le $\mathcal{O} (kN)$ operacij, kar pomeni da ima ta hip
 najmanj slabo časovno zahtevnost. V primeru, ko želimo izračunati vse lastne vrednosti ima zahtevnost $\mathcal{O}(N^2)$ za
-matrike ranga $N$. Uporabil sem rutino {\tt DSTEMR} iz knjižnjice {\sc Lapack}, ki avtomatsko skuša doseči preciznost na
+matrike ranga $N$. Uporabil sem rutino {\tt DSTEMR} iz knjižnjice {\sc Lapack}, ki skuša avtomatsko doseči preciznost na
 osem decimalnih mest.
+
+Število točnih lastnih vrednosti ni odvisno le od $N$, pač pa tudi od $h$, oz. bolje, $h$ v resnici ni neodvisen parameter,
+pač pa je odvisen od $N$.
+
+S tem, ko smo naš problem diskretizirali in zaprli v neko škatlo, smo neskončno kvantnih stanj stlačili v nek končen prostor.
+Če je $h$ prevelik bomo dobili podvajanje lastnih vrednosti (energij), ker naš diskretni prostor ne bo imel dovolj prostostnih
+stopenj. Izkaže se, da $h$ prav tako ne sme biti premajhen. Potem se naša fina skala ne pozna, zadušijo jo visoke energije, ki
+pa so izračunane z veliko preciznostjo.
+
+Za vsak $N$ torej obstaja nek optimalni $h$, ki najbolje opiše naš problem. Dobimo ga prek minimizacije -- za nek $N$ mora biti
+razmerje slabih lastnih vrednosti proti dobrim lastnim vrednostim najmanjše. Sicer lahko to s poskušanjem bolj ali manj uganemo,
+vendar to traja kar veliko časa. To lahko za nas stori tudi računalnik.
+
+Parameter $h$ ima skrito odvisnost od $N$ zaradi tega, ker z njim omogočamo optimalno ortogonalnost Lanczosove matrike.
 
 \end{document}

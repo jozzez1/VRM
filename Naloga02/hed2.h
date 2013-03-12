@@ -7,6 +7,8 @@
 #include <gsl/gsl_matrix.h>
 #include <gsl/gsl_vector.h>
 #include <gsl/gsl_sf_gamma.h>
+#include <gsl/gsl_errno.h>
+#include <gsl/gsl_min.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <string.h>
@@ -19,13 +21,18 @@ typedef struct
 	double h,     // space discretization
 	       L,     // lambda ... parameter of potential
 	       a,     // f(x) -> f(x - a)
+	       r,     // ratio good/bad eigenvalue -- we minimize bad/good
+	       C,     // "conatiner" -- sum of all the energies
+	       G,     // harmonic container
 	       t;     // time step
 
 	int N,        // rank of the matrices
 	    tryrac,   // accuracy "boolean"
+	    g,        // good/bad precision: precision = 10^{-g}
 	    p,        // approximation order of the 2nd derivative
 	    n,        // which vector do we want for initial condition
 	    d,        // animation flag
+	    good,     // number of good vectors
 	    k,        // current time iteration
 	    T;        // number of time iterations
 
@@ -258,23 +265,27 @@ void Lanczos (hod * u)
 }
 
 // struct initializer
-void init (hod * u, double h, double L, double a, double t, int N,
-		int p, int d, int tryrac, int n, int T, char * dat)
+void init (hod * u, double h, double L, double a, double t, int g,
+		int N, int p, int d, int tryrac, int n, int T, char * dat)
 {
 	u->h = h;
 	u->L = L;
 	u->a = a;
 	u->t = t;
+	u->g = g;
 	u->N = N;
 	u->p = p;
 	u->n = n;
 	u->T = T;
 	u->d = d;
 	u->k = 0;
+	u->C = 0;
 	u->tryrac = tryrac;
 
 	int M = u->N * u->N,
 	    D = u->N - 1;
+
+	u->G = 0.5 * M;
 
 	u->H = (double *) calloc (M, sizeof(double));
 	u->v = (double *) malloc (M * sizeof (double));
@@ -447,11 +458,25 @@ void eigen_dump (hod *u)
 		fclose (fout);
 }
 
+void eigen_output (hod * u)
+{
+	int i;
+	for (i = 0; i <= u->N - 1; i++)
+	{
+		printf ("% 4d % 15.*lf\n", u->N-1-i, u->g, u->E[u->N-1-i]);
+		u->C += u->E[u->N-1-i];
+	}
+	printf ("==========================\n");
+	printf ("Container = %15lf\n", u->C);
+	printf ("Max Cont. = %15lf\n", u->G);
+	printf ("Difference= %15lf\n", u->C - u->G);
+	printf ("==========================\n");
+}
+
 // diagonalize O(n^2)
 void diag_MRRR (hod * u)
 {
-	int info = MRRR (u),
-	    i;
+	int info = MRRR (u);
 
 	if (info != 0)
 	{
@@ -459,13 +484,7 @@ void diag_MRRR (hod * u)
 		exit (EXIT_FAILURE);
 	}
 
-	for (i = 0; i <= u->N - 1; i++)
-		printf ("% 4d % 15.8lf\n", u->N-1-i, u->E[u->N-1-i]);
-
 	printf ("Accuracy: %d\n", u->tryrac);
-
-	// we just rotate to the correct base
-	rotate (u);
 }
 
 // eigenvectors for harmonic potential
@@ -545,6 +564,12 @@ void time_step (hod * u)
 			1.0, u->H, u->N, u->v, 1, 0.0, u->DT, 1);	
 	cblas_dgemv (CblasRowMajor, CblasNoTrans, u->N, u->N,
 			1.0, u->H, u->N, u->w, 1, 0.0, u->ST, 1);
+
+	u->DT [0] = 0.0;
+	u->ST [0] = 0.0;
+
+	u->DT [u->N-1] = 0.0;
+	u->ST [u->N-1] = 0.0;
 }
 
 void dump_step (hod * u)
@@ -622,6 +647,167 @@ void one_big_txt (hod * u)
 		}
 		fprintf (fout, "\n");
 		printf ("t = %d\n", u->k);
+	}
+
+	fclose (fout);
+}
+
+// count correct energies of harmonic oscillator
+int count_harmonic (hod * u)
+{
+	double En,
+	       prec = pow (10, (-1)*u->g);
+	int re = 0,
+	    i;
+
+	for (i = 0; i <= u->N - 1; i++)
+	{
+		En = i + 0.5;
+
+		if (fabs (En - u->E[i]) < prec)
+			re++;
+	}
+
+	printf ("good total = %d, h = % 8lf, N = % 4d\n", re, u->h, u->N);
+ 	printf ("=========================================\n");
+
+	return re;
+}
+
+double fminimize (double x, void * param)
+{
+	hod * u = (hod *) param;
+
+	u->h = x;
+	init (u, u->h, u->L, u->a, u->t, u->g, u->N, u->p,
+			u->d, u->tryrac, u->n, u->T, u->dat);
+	diag_MRRR (u);
+
+	int n = count_harmonic (u);
+	return (-1)*n;
+}
+
+void minimizer (hod * u)
+{
+	int status,
+	    iter = 0,
+	    max_iter = 50,
+	    good = 0;
+
+	double prec = 0.1 * pow (10, (-1)*u->g);
+
+	const gsl_min_fminimizer_type * T;
+	gsl_min_fminimizer * s;
+
+	double h2 = 1,
+	       h1 = 0.000001;
+
+	gsl_function F;
+       
+	F.function = &fminimize;
+	F.params = u;
+
+	T = gsl_min_fminimizer_brent;
+	s = gsl_min_fminimizer_alloc (T);
+	gsl_min_fminimizer_set (s, &F, u->h, h1, h2);
+
+	do
+	{
+		iter++;
+		status = gsl_min_fminimizer_iterate (s);
+		good = count_harmonic (u);
+		
+		u->h = gsl_min_fminimizer_x_minimum (s);
+		h1 = gsl_min_fminimizer_x_lower (s);
+		h2 = gsl_min_fminimizer_x_upper (s);
+
+		printf ("%.3lf %3.lf %3.lf\n", h1, u->h, h2);
+
+		status = gsl_min_test_interval (h1, h2, prec, 0.0);
+
+		if (status == GSL_SUCCESS)
+			printf ("Converged.\n");
+	} while (status == GSL_CONTINUE && iter < max_iter);
+	u->good = good;
+
+	printf ("=======================\n");
+	printf ("% 4d % 15lf % 3d % 3d\n", u->N, u->h, good, iter);
+}
+
+void autoh (hod * u)
+{
+	diag_MRRR (u);
+	minimizer (u);
+
+	eigen_output (u);
+}
+
+void test_suite (hod * u, int I)
+{
+	int Nmax = u->N;
+	FILE * fout = fopen ("h-of-N3.txt", "w");
+
+	for (u->N = 1250; u->N <= Nmax; u->N += I)
+	{
+		u->h = 18.90610/(pow (u->N, 0.916111));
+		init (u, u->h, u->L, u->a, u->t, u->g, u->N, u->p,
+				u->d, u->tryrac, u->n, u->T, u->dat);
+
+		diag_MRRR (u);
+		minimizer (u);
+
+		fprintf (fout, "% 5d % 15.6lf % 3d\n", u->N, u->h, u->good);
+	}
+	fclose (fout);
+}
+
+int number (double h, double L, double a, double t, int g,
+		int N, int p, int d, int tryrac, int n, int T, char * dat)
+{
+	int N1 = N-10,
+	    N2 = N,
+	    r = 0;
+
+	double prec = pow (10, (-1)*g),
+	       * E = (double *) malloc (N1 * sizeof (double));
+
+	hod u, v;
+	init (&u, h, L, a, t, g, N1, p, d, tryrac, n, T, dat);
+	diag_MRRR (&u);
+
+	int i;
+	for (i = 0; i <= u.N-1; i++)
+		E[i] = u.E[i];
+
+//	destroy (u);
+//	hod * v = (hod *) malloc (sizeof (hod));
+	init (&v, h, L, a, t, g, N2, p, d, tryrac, n, T, dat);
+	diag_MRRR (&v);
+
+	for (i = 0; i <= N1-1; i++)
+	{
+		if (fabs (E[i] - v.E[i]) < prec)
+			r++;
+	}
+
+//	destroy (v);
+
+	free (E);
+	return r;
+}
+
+void vozi (double L, double a, double t, int g,
+		int Nmax, int p, int d, int tryrac, int n, int T, char * dat, int inc)
+{
+	int i, r;
+	FILE * fout = fopen (dat, "w");
+	for (i = 100; i <= Nmax; i += inc)
+	{
+	//	double h = 1.78850/(pow (i, 0.614827)) - i * 3.28275e-6;
+		double h = 18.9061/(pow (i, 0.916111));
+		r = number (h, L, a, t, g, i, p, d, tryrac, n, T, dat);
+		fprintf (fout, "% 5d % 5d\n", i, r);
+		printf ("% 5d % 5d\n", i, r);
 	}
 
 	fclose (fout);
