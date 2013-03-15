@@ -76,12 +76,12 @@ void step2 (hod * u)
 	u->x2[1] += t2 * u->L * u->x1[0] * u->x1[0] * u->x1[1];  // non-linear correction
 
 	// p1
-	u->x2[2] = (1 - t2)*u-x1[2] - 2*u->t*u->x1[0];           // linear part
+	u->x2[2] = (1 - t2)*u->x1[2] - 2*u->t*u->x1[0];           // linear part
 	u->x2[2] -= u->L* (u->t*u->x1[0]*u->x1[1]*u->x1[1]);     // linear in t
 	u->x2[2] -= u->L*t2 * (u->x1[2]*u->x1[1]*u->x1[1] + 2*u->x1[3]*u->x1[0]*u->x1[1]);
 
 	//p2
-	u->x2[3] = (1 - t2)*u-x1[3] - 2*u->t*u->x1[1];           // linear part
+	u->x2[3] = (1 - t2)*u->x1[3] - 2*u->t*u->x1[1];           // linear part
 	u->x2[3] -= u->L* (u->t*u->x1[0]*u->x1[0]*u->x1[1]);     // linear in t
 	u->x2[3] -= u->L*t2 * (u->x1[3]*u->x1[0]*u->x1[0] + 2*u->x1[2]*u->x1[0]*u->x1[1]);
 
@@ -102,6 +102,34 @@ void solver2 (hod * u)
 		step2 (u);
 		dump (u);
 	} while (u->n <= u->T);
+}
+
+void potential (hod * u)
+{
+	char * dat = (char *) malloc (20*sizeof (char));
+	sprintf (dat, "potential-L%d.txt", (int) (100 * u->L));
+	FILE * fout = fopen (dat, "w");
+	free (dat);
+
+	double x = -1.5,
+	       h = 0.01;
+
+	do
+	{
+		double y = -1.5;
+		do
+		{
+			double V = 0.5*(x*x + y*y) + u->L*x*x*y*y;
+			fprintf (fout, "% 15lf % 15lf % 15lf\n", x, y, V);
+
+			y += h;
+		} while (y <= 1.5);
+		fprintf (fout, "\n");
+
+		x += h;
+	} while (x <= 1.5);
+
+	fclose (fout);
 }
 
 void destroy (hod * u)
