@@ -11,7 +11,9 @@ typedef struct
 
 	double L,    // non-linear parameter Lambda
 	       t,    // time step length
-	       E;    // Energy of the current time iteration
+	       E,    // Energy of the current time iteration
+	       P1,   // <p_1^2>
+	       P2;   // <p_2^2>
 
 	double * x1, // current time iteration
 	       * x2; // next time iteration
@@ -28,6 +30,13 @@ void Hamilton (hod * u)
 	u->E = T+V;
 }
 
+void updateP (hod * u)
+{
+	double t = u->n*u->t;
+	u->P1 = (u->P1*(t - u->t) + u->x1[2]*u->x1[2]*u->t)/t;
+	u->P2 = (u->P2*(t - u->t) + u->x1[3]*u->x1[3]*u->t)/t;
+}
+
 void init (hod * u, int T, double L, double t,
 		double q1, double q2, double p1, double p2, char * dat)
 {
@@ -35,7 +44,9 @@ void init (hod * u, int T, double L, double t,
 	u->L = L;
 	u->t = t;
 
-	u->n = 0;
+	u->P1 = 0;
+	u->P2 = 0;
+	u->n  = 0;
 
 	u->x1 = (double *) malloc (4 * sizeof (double));
 	u->x2 = (double *) malloc (4 * sizeof (double));
@@ -61,45 +72,100 @@ void swap (double * x1, double * x2)
 	}
 }
 
-// symmetric propagator end result
-void step2 (hod * u)
+void stepT (double c, hod * u)
 {
-	u->n++;
+	double k = c*u->t;
 
-	double t2 = pow (u->t, 2);
-	// q1
-	u->x2[0] = (1 - t2)*u->x1[0] + 0.25*t2 + u->x1[2]*u->t;  // linear part
-	u->x2[0] += t2 * u->L * u->x1[0] * u->x1[1] * u->x1[1];  // non-linear correction
+	u->x2[0] = u->x1[0] + k*u->x1[2];
+	u->x2[1] = u->x1[1] + k*u->x1[3];
 
-	// q2
-	u->x2[1] = (1 - t2)*u->x1[1] + 0.25*t2 + u->x1[3]*u->t;  // linear part
-	u->x2[1] += t2 * u->L * u->x1[0] * u->x1[0] * u->x1[1];  // non-linear correction
-
-	// p1
-	u->x2[2] = (1 - t2)*u->x1[2] - 2*u->t*u->x1[0];           // linear part
-	u->x2[2] -= u->L* (u->t*u->x1[0]*u->x1[1]*u->x1[1]);     // linear in t
-	u->x2[2] -= u->L*t2 * (u->x1[2]*u->x1[1]*u->x1[1] + 2*u->x1[3]*u->x1[0]*u->x1[1]);
-
-	//p2
-	u->x2[3] = (1 - t2)*u->x1[3] - 2*u->t*u->x1[1];           // linear part
-	u->x2[3] -= u->L* (u->t*u->x1[0]*u->x1[0]*u->x1[1]);     // linear in t
-	u->x2[3] -= u->L*t2 * (u->x1[3]*u->x1[0]*u->x1[0] + 2*u->x1[2]*u->x1[0]*u->x1[1]);
+	u->x2[2] = u->x1[2];
+	u->x2[3] = u->x1[3];
 
 	swap (u->x1, u->x2);
+}
+
+void stepV (double c, hod * u)
+{
+	double k = c*u->t;
+
+	u->x2[0] = u->x1[0];
+	u->x2[1] = u->x1[1];
+
+	u->x2[2] = u->x1[2] - k*u->x1[0]*(1 + 2*u->L*u->x1[1]*u->x2[1]);
+	u->x2[3] = u->x2[3] - k*u->x1[1]*(1 + 2*u->L*u->x1[0]*u->x2[0]);
+
+	swap (u->x1, u->x2);
+}
+
+void S1 (hod * u)
+{
+	stepV (1.0, u);
+	stepT (1.0, u);
+
+	Hamilton (u);
+}
+
+void S2 (double c, hod * u)
+{
+	stepT (c*0.5, u);
+	stepV (c*1.0, u);
+	stepT (c*0.5, u);
+
+	Hamilton (u);
+}
+
+void S4 (hod * u)
+{
+	double x0 = (-1.0)* pow (2, 1.0/3)/(2 - pow (2, 1.0/3)),
+	       x1 = 1.0 / (2 - pow (2, 1.0/3));
+
+	S2 (x1, u);
+	S2 (x0, u);
+	S2 (x1, u);
+
 	Hamilton (u);
 }
 
 void dump (hod * u)
 {
-	fprintf (u->fout, "% 15lf % 15lf % 15lf % 15lf % 15lf % 15lf\n",
-			u->n*u->t, u->x1[0], u->x1[1], u->x1[2], u->x1[3], u->E);
+	fprintf (u->fout, "% 15lf % 15lf % 15lf % 15lf % 15lf % 15lf % 15lf % 15lf\n",
+			u->n*u->t, u->x1[0], u->x1[1], u->x1[2], u->x1[3],
+			u->E, u->P1, u->P2);
 }
 
-void solver2 (hod * u)
+void stepperS1 (hod * u)
 {
+	dump (u);
 	do
 	{
-		step2 (u);
+		u->n++;
+		S1 (u);
+		updateP (u);
+		dump (u);
+	} while (u->n <= u->T);
+}
+
+void stepperS2 (hod * u)
+{
+	dump (u);
+	do
+	{
+		u->n++;
+		S2 (1.0, u);
+		updateP (u);
+		dump (u);
+	} while (u->n <= u->T);
+}
+
+void stepperS4 (hod * u)
+{
+	dump (u);
+	do
+	{
+		u->n++;
+		S4 (u);
+		updateP (u);
 		dump (u);
 	} while (u->n <= u->T);
 }

@@ -23,7 +23,7 @@ int main (int argc, char ** argv)
 	    arg;
 
 	opterr = 1;
-	while ((arg = getopt (argc, argv, "T:s:t:L:p:q:o:Py")) != -1)
+	while ((arg = getopt (argc, argv, "T:s:t:L:p:q:o:Pyl")) != -1)
 	{
 		switch (arg)
 		{
@@ -54,7 +54,22 @@ int main (int argc, char ** argv)
 			case 'y':
 				y = 'y';
 				break;
+			case 'l':
+				printf ("List of commands:\n");
+				printf ("========================\n");
+				printf ("-l <no>       -- print this list\n");
+				printf ("-T (100)      -- maximum time iteration\n");
+				printf ("-s (2)[1,2,4] -- stepper type\n");
+				printf ("-t (0.1)      -- time step length\n");
+				printf ("-L (0.0)      -- potential parameter\n");
+				printf ("-p (1.0)      -- starting p1\n");
+				printf ("-q (0.5)      -- starting q2\n");
+				printf ("-o (format)   -- output file\n");
+				printf ("-P <no>       -- calculate potential too\n");
+				printf ("-y <no>       -- save output\n");
+				exit (EXIT_SUCCESS);
 			default:
+				printf ("Unknown command!\nTry %s -l for help\n", argv[0]);
 				abort ();
 				exit (EXIT_FAILURE);
 		}
@@ -74,11 +89,17 @@ int main (int argc, char ** argv)
 	printf ("Output in %s ...\n", file);
 	switch (s)
 	{
+		case 1:
+			stepperS1 (u);
+			break;
 		case 2:
-			solver2 (u);
+			stepperS2 (u);
+			break;
+		case 4:
+			stepperS4 (u);
 			break;
 		default:
-			solver2(u);
+			stepperS2(u);
 			break;
 	}
 

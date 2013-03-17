@@ -8,14 +8,14 @@ LAMBDA="$2"
 POT="potential-L$LAMBDA.txt"
 SAVE="$3"
 
+killall gnuplot_x11
+
 echo "reset;
 set multiplot layout 2,2 rowsfirst;
 set autoscale;
 set xlabel \"q1\";
 set ylabel \"q2\";
 set title \"Orbits\";
-set xrange [-1:1];
-set yrange [-1:1];
 set view map;
 set palette rgbformulae 26,27,28 maxcolor 10;
 splot \"$POT\" u 1:2:3 w pm3d title '', \"$DAT.txt\" u 2:3:1 w l lt 5 title '';
@@ -28,7 +28,7 @@ set xlabel 't';
 set ylabel 'E';
 set grid;
 set yrange [0:1];
-plot \"$DAT.txt\" u 1:6 w l title '';
+plot \"$DAT.txt\" u 1:6 w l title 'Total E', \"$DAT.txt\" u 1:7 w l title '<p1>^2', \"$DAT.txt\" u 1:("'$8 + $7'") w l title '<p2>^2';
 set autoscale;
 set title 'index 1';
 set xlabel 'p1';
@@ -63,7 +63,7 @@ if [ "$SAVE" == "y" ]; then
 	set ylabel 'E';
 	set grid;
 	set yrange [0:1];
-	plot \"$DAT.txt\" u 1:6 w l title '';
+	plot \"$DAT.txt\" u 1:6 w l title 'Total E', \"$DAT.txt\" u 1:7 title '<p1>^2', \"$DAT.txt\" u 1:8 title '<p2>^2';
 	set autoscale;
 	set title 'index 1';
 	set xlabel 'p1';
