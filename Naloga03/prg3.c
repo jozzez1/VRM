@@ -83,17 +83,27 @@ int main (int argc, char ** argv)
 	if (S == 1)
 	{
 		dat = (char *) malloc (30 * sizeof (char));
-		sprintf (dat, "scan-t%d.txt", (int) (t * 100));
+		file= (char *) malloc (34 * sizeof (char));
+
+		sprintf (dat, "scan-t%d", (int) (t * 100));
+		sprintf (file,"%s.txt", dat);
 
 		hod * u = (hod *) malloc (sizeof (hod));
-		init (u, T, 0, t, q1, q2, p1, p2, s, dat);
+		init (u, T, 0, t, q1, q2, p1, p2, s, file);
+		free (file);
 
 		Lscan (u);
 		destroy (u);
+		printf ("Output in %s.txt ...\n", dat);
+
+		int save = 0;
+		if (y == 'y')
+			save = 1;
+
 
 		char * command = (char *) malloc (50*sizeof (char));
-		sprintf (command, "./plot3L.sh %s %d %d %c",
-				dat, (int) (t*100), T, y);
+		sprintf (command, "./plot3L.sh %s %d",
+				dat, save);
 
 		system (command);
 

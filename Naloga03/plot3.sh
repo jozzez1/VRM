@@ -41,6 +41,7 @@ unset multiplot " | gnuplot -p
 
 if [ "$SAVE" == "y" ]; then
 
+	echo -e "Output in $DAT.tex ...\n"
 	echo "reset;
 	set term epslatex color solid size 14cm, 12cm;
 	set output \"$DAT.tex\";
