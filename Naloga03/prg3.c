@@ -20,10 +20,11 @@ int main (int argc, char ** argv)
 	int T = 100,
 	    s = 2,
 	    P = 0,
+	    S = 0,
 	    arg;
 
 	opterr = 1;
-	while ((arg = getopt (argc, argv, "T:s:t:L:p:q:o:Pyl")) != -1)
+	while ((arg = getopt (argc, argv, "T:s:t:L:p:q:o:PylS")) != -1)
 	{
 		switch (arg)
 		{
@@ -32,6 +33,9 @@ int main (int argc, char ** argv)
 				break;
 			case 's':
 				s = atoi (optarg);
+				break;
+			case 'S':
+				S = 1;
 				break;
 			case 't':
 				t = atof (optarg);
@@ -65,6 +69,7 @@ int main (int argc, char ** argv)
 				printf ("-p (1.0)      -- starting p1\n");
 				printf ("-q (0.5)      -- starting q2\n");
 				printf ("-o (format)   -- output file\n");
+				printf ("-S <no>       -- scan over Lambda\n");
 				printf ("-P <no>       -- calculate potential too\n");
 				printf ("-y <no>       -- save output\n");
 				exit (EXIT_SUCCESS);
@@ -73,6 +78,29 @@ int main (int argc, char ** argv)
 				abort ();
 				exit (EXIT_FAILURE);
 		}
+	}
+
+	if (S == 1)
+	{
+		dat = (char *) malloc (30 * sizeof (char));
+		sprintf (dat, "scan-t%d.txt", (int) (t * 100));
+
+		hod * u = (hod *) malloc (sizeof (hod));
+		init (u, T, 0, t, q1, q2, p1, p2, s, dat);
+
+		Lscan (u);
+		destroy (u);
+
+		char * command = (char *) malloc (50*sizeof (char));
+		sprintf (command, "./plot3L.sh %s %d %d %c",
+				dat, (int) (t*100), T, y);
+
+		system (command);
+
+		free (command);
+		free (dat);
+
+		exit (EXIT_SUCCESS);
 	}
 
 	if (dat == NULL)
@@ -84,7 +112,7 @@ int main (int argc, char ** argv)
 
 	sprintf (file, "%s.txt", dat);
 	hod * u = (hod *) malloc (sizeof (hod));
-	init (u, T, L, t, q1, q2, p1, p2, file);
+	init (u, T, L, t, q1, q2, p1, p2, s, file);
 
 	printf ("Output in %s ...\n", file);
 	switch (s)
@@ -115,3 +143,4 @@ int main (int argc, char ** argv)
 
 	return 0;
 }
+

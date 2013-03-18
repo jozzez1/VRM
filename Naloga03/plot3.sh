@@ -8,8 +8,6 @@ LAMBDA="$2"
 POT="potential-L$LAMBDA.txt"
 SAVE="$3"
 
-killall gnuplot_x11
-
 echo "reset;
 set multiplot layout 2,2 rowsfirst;
 set autoscale;
@@ -28,17 +26,17 @@ set xlabel 't';
 set ylabel 'E';
 set grid;
 set yrange [0:1];
-plot \"$DAT.txt\" u 1:6 w l title 'Total E', \"$DAT.txt\" u 1:7 w l title '<p1>^2', \"$DAT.txt\" u 1:("'$8 + $7'") w l title '<p2>^2';
+plot \"$DAT.txt\" u 1:6 w l title 'Total E';
 set autoscale;
 set title 'index 1';
-set xlabel 'p1';
-set ylabel 'q1';
-plot \"$DAT.txt\" u 4:2 w l title '';
+set xlabel '<p>^2';
+set ylabel 't';
+plot \"$DAT.txt\" u 1:7 w l title '<p1>^2', \"$DAT.txt\" u 1:8 w l title '<p2>^2';
 set autoscale;
 set title 'index 2';
-set xlabel 'p2';
-set ylabel 'q2';
-plot \"$DAT.txt\" u 5:3 w l title '';
+set ylabel 'log|E - E0|';
+set xlabel 't';
+plot \"$DAT.txt\" u 1:"'(log(abs($9)))'" w l title '';
 unset multiplot " | gnuplot -p
 
 if [ "$SAVE" == "y" ]; then

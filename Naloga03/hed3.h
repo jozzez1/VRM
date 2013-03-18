@@ -7,11 +7,13 @@
 typedef struct
 {
 	int T,       // max. time iteration
-	    n;       // index of current time iteration
+	    n,       // index of current time iteration
+	    s;
 
 	double L,    // non-linear parameter Lambda
 	       t,    // time step length
 	       E,    // Energy of the current time iteration
+	       E0,   // starting energy
 	       P1,   // <p_1^2>
 	       P2;   // <p_2^2>
 
@@ -38,11 +40,12 @@ void updateP (hod * u)
 }
 
 void init (hod * u, int T, double L, double t,
-		double q1, double q2, double p1, double p2, char * dat)
+		double q1, double q2, double p1, double p2, int s, char * dat)
 {
 	u->T = T;
 	u->L = L;
 	u->t = t;
+	u->s = s;
 
 	u->P1 = 0;
 	u->P2 = 0;
@@ -57,6 +60,7 @@ void init (hod * u, int T, double L, double t,
 	u->x1[3] = p2;
 
 	Hamilton (u);
+	u->E0 = u->E;
 
 	u->fout = fopen (dat, "w");
 }
@@ -129,9 +133,14 @@ void S4 (hod * u)
 
 void dump (hod * u)
 {
-	fprintf (u->fout, "% 15lf % 15lf % 15lf % 15lf % 15lf % 15lf % 15lf % 15lf\n",
+	fprintf (u->fout, "% 15lf % 15lf % 15lf % 15lf % 15lf % 15lf % 15lf % 15lf % 15.8e\n",
 			u->n*u->t, u->x1[0], u->x1[1], u->x1[2], u->x1[3],
-			u->E, u->P1, u->P2);
+			u->E, u->P1, u->P2, u->E - u->E0);
+}
+
+void dumpL (hod * u)
+{
+	fprintf (u->fout, "% 15lf % 15lf % 15lf\n", u->L, u->P1, u->P2);
 }
 
 void stepperS1 (hod * u)
@@ -170,6 +179,59 @@ void stepperS4 (hod * u)
 	} while (u->n <= u->T);
 }
 
+void Lstepper (hod * u, double L)
+{
+	u->L = L;
+
+	u->P1 = 0;
+	u->P2 = 0;
+	u->n  = 0;
+
+	u->x1[0] = 0;
+	u->x1[1] = 0.5;
+	u->x1[2] = 1.0;
+	u->x1[3] = 0.0;
+
+	Hamilton (u);
+	do
+	{
+		u->n++;
+
+		switch (u->s)
+		{
+			case 1:
+				S1 (u);
+				break;
+			case 2:
+				S2 (1.0, u);
+				break;
+			case 4:
+				S4 (u);
+				break;
+			default:
+				S4 (u);
+				break;
+		}
+		updateP (u);
+	} while (u->n <= u->T);
+}
+
+void Lscan (hod * u)
+{
+	double L  = 30,
+	       dL = 0.01;
+
+	printf ("Lambda = % 6.2lf\n", u->L);
+	Lstepper (u, 0.0);
+	dumpL (u);
+	do
+	{
+		printf ("Lambda = % 6.2lf\n", u->L + dL);
+		Lstepper (u, u->L + dL);
+		dumpL (u);
+	} while (u->L <= L);
+}
+
 void potential (hod * u)
 {
 	char * dat = (char *) malloc (20*sizeof (char));
@@ -205,3 +267,4 @@ void destroy (hod * u)
 	fclose (u->fout);
 	free (u);
 }
+
