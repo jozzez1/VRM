@@ -133,6 +133,9 @@ int main (int argc, char ** argv)
 		case 2:
 			stepperS2 (u);
 			break;
+		case 3:
+			RK4 (u);
+			break;
 		case 4:
 			stepperS4 (u);
 			break;

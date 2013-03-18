@@ -1,8 +1,10 @@
-#!/bin/zsh
+#!/bin/bash
 
 
 DAT=$1
 SAVE=$2
+
+PIC="pic-$DAT.tex"
 
 echo "reset;
 set xlabel 'Lambda';
@@ -11,13 +13,30 @@ plot \"$DAT.txt\" u 1:(log("'$2/$3'")) w l title ''" | gnuplot -p
 
 if [ ${SAVE} -eq 1 ]; then
 
-	echo -e "Saving in $DAT.tex/eps\n"
+	echo "Saving in $DAT.tex/eps"
+
 	echo "reset;
 	set term epslatex color solid size 12cm,8cm;
 	set output \"$DAT.tex\";
 	set xlabel '$\lambda$';
-	set ylabel '$"'\r'"angle p_1^2\langle/"'\r'"anglep_2^2\langle'
-	plot \"$DAT.txt\" u 1:(log("'$2/$3'")) w l title ''" | gnuplot -p
+	set title 'Ekviparticijski test';
+	set ylabel '"'$\log\frac{\langle p_1^2\rangle}{/"\langle p_2^2\rangle}$'"
+	plot \"$DAT.txt\" u 1:(log("'$2/$3'")) w l title ''" | gnuplot
+
+	epstopdf $DAT.eps
+	PIC="joze_zobec_03.tex"
+
+	echo >> $PIC
+	echo '\begin{figure}[H]'               >> $PIC
+	echo '   \begin{center}'               >> $PIC
+	echo '      \input{'"$DAT.tex"'}'      >> $PIC
+	echo '   \end{center}'                 >> $PIC
+	echo '   \vspace{-20pt}'               >> $PIC
+	echo '   \caption{Some caption ...}'   >> $PIC
+	echo '   \label{fig:pic-L'"$LAMBDA"'}' >> $PIC
+	echo '   \vspace{-10pt}'               >> $PIC
+	echo '\end{figure}'                    >> $PIC
+	echo >> $PIC
 
 fi
 

@@ -4,6 +4,10 @@
 #include <math.h>
 #include <stdlib.h>
 
+//RK4 stuff
+#include <gsl/gsl_errno.h>
+#include <gsl/gsl_odeiv2.h>
+
 typedef struct
 {
 	int T,       // max. time iteration
@@ -240,7 +244,7 @@ void potential (hod * u)
 	free (dat);
 
 	double x = -1.5,
-	       h = 0.01;
+	       h = 0.05;
 
 	do
 	{
@@ -258,6 +262,46 @@ void potential (hod * u)
 	} while (x <= 1.5);
 
 	fclose (fout);
+}
+
+int funcRK4 (double t, const double * y, double * f, void * params)
+{
+	double L = * (double *) params;
+	f[0] = y[2];
+	f[1] = y[3];
+	f[2] = (-1)*y[0]*(1 + L*y[1]*y[1]);
+	f[3] = (-1)*y[1]*(1 + L*y[0]*y[0]);
+	return GSL_SUCCESS;
+}
+
+void RK4 (hod * u)
+{
+	gsl_odeiv2_system sys = {funcRK4, NULL, 4, &u->L};
+	gsl_odeiv2_driver * d =
+		gsl_odeiv2_driver_alloc_y_new (&sys, gsl_odeiv2_step_rk4,
+				u->t, 1e-8, 1e-8);
+
+	int s;
+
+	double t = u->n*u->t;
+	dump (u);
+	do
+	{
+		u->n++;
+		s = gsl_odeiv2_driver_apply_fixed_step (d, &t, u->t, 1000, u->x1);
+
+		if (s != GSL_SUCCESS)
+		{
+			printf ("Driver error %d\n", s);
+			break;
+		}
+
+		Hamilton (u);
+		updateP (u);
+		dump (u);
+	} while (u->n <= u->T);
+
+	gsl_odeiv2_driver_free (d);
 }
 
 void destroy (hod * u)

@@ -1,0 +1,220 @@
+\documentclass[a4 paper, 12pt]{article}
+\usepackage[slovene]{babel}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[small, width=0.8\textwidth]{caption}
+\usepackage[pdftex]{graphicx}
+\usepackage{amssymb, amsmath, fullpage, float, hyperref}
+
+\begin{document}
+
+\begin{center}
+\textsc{Višje računske metode}\\
+\textsc{2012/13}\\[0.5cm]
+\textbf{3. naloga -- Simplektični integratorji}
+\end{center}
+\begin{flushright}
+\textbf{Jože Zobec}
+\end{flushright}
+
+\section{Uvod}
+
+V tej nalogi smo se posvetili simplektičnim integratorjem. Tako ime imajo, ker ohranjajo simplektično strukturo, kjer
+jo drugi, npr. implicitna Eulerjeva metoda, ali pa tudi vsem dobro znana metoda Runge-Kutta reda 4 ({\tt RK4}). Vse te
+metode diferencialno enačbo aproksimirajo z nekimi končnimi diferencami ali pa se je lotijo reševati iterativno.
+
+Simplektični integrator uporablja Liouvillov propagator, ki ga razcepimo s Trotter-Suzukijevem razcepom. Izračunamo
+ga lahko do poljubnega reda natančno s pomočjo ti. BCS formul.
+
+Naš hamiltonian je
+
+\[
+	H = \underbrace{\frac{1}{2}(p_1 + p_2)^2}_T + \underbrace{\frac{1}{2}(q_1^2 + q_2^2) + \lambda q_1^2q_2^2}_V.
+\]
+
+Anharmonski člen $\lambda$ nam problem zakomplicira tako, da diferencialne enačbe s standarnimi enačbami ne moremo
+reševati na dolgi rok brez adaptivnega koraka. Zaradi zlobnega potenciala potrebujemo izjemno majhe korake proč od
+minimuma potenciala. Za take primere so simplektični integratorji še posebej dobri.
+
+Druga naloga je zahtevala numeričen eksperiment, s katerim bi preverili ekviparticijski teorem, ki pravi da na vsako
+prostostno stopnjo dobimo $k_BT/2$ energije, oz. $\langle p_1^2 \rangle = \langle p_2^2 \rangle$, kar bi moralo še
+bolj veljati za dolge čase.
+
+\section{Izračun}
+
+Glavno gonilo simplektične integracije je razcep Liouvillovega propagatorja
+
+\begin{equation}
+	U(\cdot, H) = \exp\Big(\tau\{\cdot, H\}\Big),
+\end{equation}
+
+kjer $\{A,B\}$ pomeni poissonov oklepaj. V aproksimaciji v prvem redu je ta propagator kar
+
+\begin{equation}
+	U \approx \exp\Big(\tau\{\cdot, T\}\Big)\exp\Big(\tau\{\cdot, V\}\Big),
+\end{equation}
+
+vendar pa ta shema ni simetrična. Lahko izberemo simetrizirano shemo, s pomočjo katere lahko sestavimo tudi vse tiste,
+ki so natančnosti $\mathcal{O}(\tau^{2n})$.
+
+\begin{equation}
+	\mathtt{S_2} (\tau) = \exp\bigg(\frac{\tau}{2}\{\cdot, T\}\bigg) \exp\bigg(\tau\{\cdot, V\}\bigg)
+		\exp\bigg(\frac{\tau}{2}\{\cdot, T\}\bigg),
+\end{equation}
+
+čeprav lahko tudi tu z vso pravico zamenjamo $V$ in $T$. Ta shema ima natančnost $\mathcal{O}(\tau^2)$. Skalirnim
+faktorji pred $\tau$ v eksponentu (koeficienti) morajo biti za lihe rede natančnosti kompleksni.
+
+Za naš problem imamo vektor $\vec{x}_t = (q_1, q_2, p_1, p_2)_t$. V vektor $\vec{x}_{t+1}$ pridemo z večkratnim
+zaporednim delovanjem $\exp(c\tau\{\cdot,V\})$ in $\exp(c\tau\{\cdot,T\})$ na njegove komponente. Za naš primer se te
+spremenijo tako:
+
+\begin{align}
+	\exp\Big(c\tau\{\cdot, T\}\Big)q_k &= q_k + c\tau p_k, \notag \\
+	\exp\Big(c\tau\{\cdot, T\}\Big)p_k &= p_k, \notag \\
+	\exp\Big(c\tau\{\cdot, V\}\Big)q_k &= q_k, \notag \\
+	\exp\Big(c\tau\{\cdot, V\}\Big)p_k &= p_k - c\tau q_1 (1 + 2\lambda q_2^2) \delta_{1,k} - c\tau q_2
+		(1 + 2\lambda q_1^2) \delta_{2,k},
+\end{align}
+
+kjer je $c$ lahko v splošnem nek kompleksni koeficient.
+
+\section{Rezultati}
+
+V prvi nalogi je bilo treba zgolj izračunati trajektorije za različne $\lambda$ in preveriti ohranitev energije za
+različne integratorje -- ${\tt RK4}$, ${\mathtt S_2}$, ${\mathtt S_4}$ \ldots
+
+Sproti sem še narisal spreminjanje $\langle p_1^2 \rangle$ in $\langle p_2^2 \rangle$ od koraka do koraka. Barva
+predstavlja jakost potenciala. Izmed grafov četvorčkov imajo grafi označeni "`povprečje"' narobe označeni osi:
+abscisa je namreč $t$ in ordinatna os je $\langle p^2 \rangle$.
+
+Pričnimo z asimetričnim simplektičnim integratorjem reda $\mathcal{O}(\tau)$.
+
+\begin{figure}[H]
+   \begin{center}
+      \input{n3-L0-s1-t1.tex}
+   \end{center}
+   \vspace{-20pt}
+   \caption{To je natančnost reda $\tau$, ki je enak $0.01$. Kot vidimo se energija ohranja približno najmanj na 6 decimalnih
+	mest. Orbita je lepa elipsa, saj je $\lambda = 0$.}
+   \label{fig:pic-L0}
+   \vspace{-10pt}
+\end{figure}
+
+\begin{figure}[H]
+   \begin{center}
+      \input{n3-L100-s1-t1.tex}
+   \end{center}
+   \vspace{-20pt}
+   \caption{Isto kot prej, le da je tu $\lambda = 1$,  zato je orbita nekaj čudnega. Energija je določena s praktično
+	 isto natančnostjo kot prej.}
+   \label{fig:pic-L100}
+   \vspace{-10pt}
+\end{figure}
+
+\begin{figure}[H]
+   \begin{center}
+      \input{n3-L1000-s1-t1.tex}
+   \end{center}
+   \vspace{-20pt}
+   \caption{V tem primeru je $\lambda = 10$. Orbita praktično zapolni prostor, ki ji je energijsko na voljo, opazimo pa tudi to,
+	da ekviparticijski izrek tu že kar dobro drži. Natančnost je malce padla -- pet decimalnih mest.}
+   \label{fig:pic-L1000}
+   \vspace{-10pt}
+\end{figure}
+
+Orbita je tu praktično zapolnila energijsko možen prostor in na prvi pogled je videti kot zmazek. Verjetno smo prekoračili
+kritično energijo, pri kateri postane motnja $\lambda$ tako velika, da ne dobimo več lepih periodičnih tirnic.
+
+Poglejmo še simetrični integrator reda $\mathcal{O}(\tau^2)$:
+
+\begin{figure}[H]
+   \begin{center}
+      \input{n3-L1000-s2-t1.tex}
+   \end{center}
+   \vspace{-20pt}
+   \caption{Simetrični integrator ${\mathtt S_2}$, $\tau = 0.01$, $\lambda = 10$. Kot vidimo je natančnost tu bistveno večja,
+	saj imamo 10 decimalnih mest, torej je res za oceno $\mathcal{O}(\tau^2)$. Izračun povprečij ne da neke razlike glede
+	na asimetrično shemo.}
+   \label{fig:pic-L1000}
+   \vspace{-10pt}
+\end{figure}
+
+Shema četrtega reda -- ${\mathtt S_4}$:
+
+\begin{figure}[H]
+   \begin{center}
+      \input{n3-L1000-s4-t1.tex}
+   \end{center}
+   \vspace{-20pt}
+   \caption{${\mathtt S_4}$, $\tau = 0.01$, $\lambda = 10$. Vidimo, da je energija še natančnejša od metod nižjega reda.
+	Povprečji kvadratov gibalnih količin se že od začetka držita bolj skupaj.}
+   \label{fig:pic-L1000}
+   \vspace{-10pt}
+\end{figure}
+
+Primerjajmo sedaj to z enim najbolj popularnih integratorjev, {\tt RK4}. Da bo pošteno, preverimo še delovanje ${\mathtt S_4}$
+na $\lambda = 0$:
+
+\begin{figure}[H]
+   \begin{center}
+      \input{n3-L0-s4-t1.tex}
+   \end{center}
+   \vspace{-20pt}
+   \caption{Shema ${\mathtt S_4}$ za $\tau = 0.01$ in $\lambda = 0$. Natančnost je v najslabšem primeru 22 decimalnih mest.}
+   \label{fig:pic-L0}
+   \vspace{-10pt}
+\end{figure}
+
+\begin{figure}[H]
+   \begin{center}
+      \input{n3-L0-s3-t1.tex}
+   \end{center}
+   \vspace{-20pt}
+   \caption{Shema ${\tt RK4}$, za $\tau = 0.01$ in $\lambda = 0$. Uporabil sem že pripravljeno metodo iz knjižnjice
+	{\tt GSL}, pri čemer sem zahteval fiksen korak. Takoj nas zbode v oči, da je orbita napačna in neperiodična.
+	Krivina tira je prevelika, da bi bila elipsa, zato vedno zgreši stičišče in nato precedira okrog. Energija se
+	ohranja presenetljivo dobro, vendar jo, kot vidimo, monotono nosi proti nižjim natančnostim. Tako imamo od začetnih
+	22 decimalnih mest na koncu le še 18 dobrih.}
+   \label{fig:pic-L0}
+   \vspace{-10pt}
+\end{figure}
+
+Poglejmo si še kaj se zgodi za velike $\lambda$. Vzeli bomo kot prej, $\lambda = 10$.
+
+\begin{figure}[H]
+   \begin{center}
+      \input{n3-L1000-s3-t1.tex}
+   \end{center}
+   \vspace{-20pt}
+   \caption{Integrator je Runge-Kutta reda 4, $\tau = 0.01$, $\lambda = 10$. Objokujem tiste, ki morajo za tak primer
+	uporabljati ${\tt RK4}$. Rešitev je zelo slaba. O orbiti sicer ne vemo nič, za naše potrebe se od simplektičnih
+	orbit ne razlikuje, čeprav vidimo, da je že ob krajšem času bolj zdivjala od simplektične. Vidimo, pa da je energija
+	skoraj vse, samo tisto, kar bi morala biti, ni. Natančnost je kvečjemu na eno decimalno mesto. Vidimo, pa da
+	ekviparticijski izrek tu drži "`bolje"'.}
+   \label{fig:pic-L1000}
+   \vspace{-10pt}
+\end{figure}
+
+\pagebreak
+
+\subsection{Veljavnost ekviparticijskega izreka}
+
+To sem naredil kar tako, da sem drsel čez parameter $\lambda$ in izračunal logaritem razmerja povprečij kvadratov gibalnih
+količin, torej $\log\langle p_1^2 \rangle / \langle p_2^2 \rangle$. Uporabil sem integrator ${\mathtt S_4}$ in računal
+povprečje do časa $T = 10000$. Zaradi konsistence sem spet vzel $\tau = 0.01$.
+
+\begin{figure}[H]
+   \begin{center}
+      \input{scan-t1.tex}
+   \end{center}
+   \vspace{-20pt}
+   \caption{Vidimo, da kljub začetni nevaljavnosti
+	ekviparticijskega izreka, ta prične veljati za recimo $\lambda = 3$, z višanjem pa še bolj, ker je gibanje čedalje
+	bolj stohastično in prične spomoinjati na idealni plin.}
+      \label{fig:pic-L}
+   \vspace{-10pt}
+\end{figure}
+
+\end{document}
+
