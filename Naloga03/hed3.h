@@ -1,6 +1,9 @@
 // hed3.h
 ////////////
 
+#ifndef __HEADER_VRM3
+#define __HEADER_VRM3
+
 #include <math.h>
 #include <stdlib.h>
 
@@ -312,3 +315,4 @@ void destroy (hod * u)
 	free (u);
 }
 
+#endif
