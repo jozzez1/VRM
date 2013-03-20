@@ -15,18 +15,19 @@ typedef struct
 	int N,               // vector dimension
 	    T,               // temperature flag -- our time will be i/T
 	    M,               // maximum time iteration
-	    t,               // current integration index -- h*t = 2*beta
+	    t,               // current integration index -- h*t = beta
 	    s,               // which integrator to use ...
-	    n,               // number of averaged vectors
 	    G;               // maximum number of vectors to be averaged
 
 	gsl_rng * rand;      // random number generator
+
+	FILE * fout;         // file for outputting the data
 
 	double Z,            // vector of -z's for each psi we have a different value
 	       F,            // free energy
 	       h;            // step length -- temporal or thermal
 
-	double complex ** g;  // state vector of state vectors
+	double complex ** g;  // vector of state vectors
 } hod;
 
 // funkcija zagrabi na i,i+1 mestu in ga transformira s
@@ -39,13 +40,13 @@ void Utrans (hod * u, double complex a, int i, int j)
 	               x1 = u->g[j][n+1];
 
 	if (u->T == 1)
-		p *= I;
+		p *= (-1)*I;
 
 	// we take periodic boundaries 
 	u->g[j][n]  *= cexp((-1)*p) * cexp(2*p);
 	u->g[j][(n+3) % u->N] *= cexp ((-1)*p) * cexp (2*p);
 
-	u->g[j][n+1] = cexp ((-1)*p) * (ccosh (2*p)*u->ag[j][n+1] + csinh (2*p)*u->g[j][(n+2)%u->N]);
+	u->g[j][n+1] = cexp ((-1)*p) * (ccosh (2*p)*u->g[j][n+1] + csinh (2*p)*u->g[j][(n+2)%u->N]);
 	u->g[j][(n+2)%u->N] = cexp ((-1)*p) * (ccosh (2*p)*u->g[j][(n+2)%u->N] + csinh (2*p)*x1);
 }
 
@@ -67,7 +68,7 @@ void odd (hod * u, double complex a, int j)
 		Utrans (u, a, i, j);
 }
 
-void Asym (hod * u, j)
+void Asym (hod * u)
 {
 	int j;
 	for (j = 0; j <= u->G-1; j++)
@@ -158,11 +159,12 @@ void S5 (hod * u)
 
 void UpdateF (hod * u)
 {
-	u->F = (-2.0)/(u->t * u->h) * log (u->Z);
+	u->F = (-1.0)/(u->t * u->h) * log (u->Z);
 }
 
 void UpdateZ (hod * u)
 {
+	u->Z = 0;
 
 	int j;
 	for (j = 0; j <= u->G-1; j++)
@@ -170,7 +172,7 @@ void UpdateZ (hod * u)
 		double S = 0;
 		int i;
 		for (i = 0; i <= u->N-1; i++)
-			S += conj (u->g[j][i]) * u->g[j][i];
+			S += pow (cabs (u->g[j][i]),2);
 
 		u->Z = u->Z * (1 - 1.0/(j+1)) + S/(j+1);
 	}
@@ -183,20 +185,24 @@ void init_vec (hod * u, int j)
 	u->g[j] = (double complex *) malloc (u->N * sizeof (double complex));
 
 	int i;
+	double S = 0;
 	for (i = 0; i <= u->N-1; i++)
 	{
-		double x = gsl_ran_gaussian_ziggurat (u->rand, 1.0),
-		       y = gsl_ran_gaussian_ziggurat (u->rand, 1.0);
+		double x = gsl_ran_gaussian_ziggurat (u->rand, 2.0),
+		       y = gsl_ran_gaussian_ziggurat (u->rand, 2.0);
 
 		u->g[j][i] = x + y*I;
+		S += pow (cabs(u->g[j][i]), 2);
 	}
+
+	S = sqrt(S);
+
+	for (i = 0; i <= u->N-1; i++)
+		u->g[j][i] /= S;
 }
 
-void init (hod * u, int N, int T, int M, int s, int G, double h)
+void init (hod * u, int N, int T, int M, int s, int G, double h, char * dat)
 {
-	if (N % 2 != 0)
-		N++;
-
 	u->N = pow(2,N);
 
 	u->T = T;
@@ -208,13 +214,15 @@ void init (hod * u, int N, int T, int M, int s, int G, double h)
 	u->F = 0;
 	u->h = h;
 
+	u->fout = fopen (dat, "w");
+
+	u->rand = gsl_rng_alloc (gsl_rng_taus);
+	gsl_rng_set (u->rand, 10248023);
+
 	int j;
 	u->g = (double complex **) malloc (u->G * sizeof (double complex *));
 	for (j = 0; j <= u->G-1; j++)
 		init_vec (u, j);
-
-	u->rand = gsl_rng_alloc (gsl_rng_taus);
-	gsl_rng_set (u->rand, 10248023);
 }
 
 void destroy (hod * u)
@@ -227,6 +235,67 @@ void destroy (hod * u)
 	gsl_rng_free (u->rand);
 
 	free (u);
+}
+
+void dumpZF (hod * u)
+{
+	fprintf (u->fout, "% 15lf % 15lf % 15lf\n", u->t*u->h, u->Z, u->F);
+}
+
+void simple_propagate (hod * u)
+{
+
+	switch (u->s)
+	{
+		case 1:
+			for (u->t = 0; u->t <= u->M-1; u->t++)
+			{
+				Asym (u);
+				UpdateZ (u);
+				dumpZF (u);
+			}
+			break;
+		case 2:
+			for (u->t = 0; u->t <= u->M-1; u->t++)
+			{
+				S2 (u);
+				UpdateZ (u);
+				dumpZF (u);
+			}
+			break;
+		case 3:
+			for (u->t = 0; u->t <= u->M-1; u->t++)
+			{
+				S3 (u);
+				UpdateZ (u);
+				dumpZF (u);
+			}
+			break;
+		case 4:
+			for (u->t = 0; u->t <= u->M-1; u->t++)
+			{
+				S4 (u);
+				UpdateZ (u);
+				dumpZF (u);
+			}
+			break;
+		case 5:
+			for (u->t = 0; u->t <= u->M-1; u->t++)
+			{
+				S5 (u);
+				UpdateZ (u);
+				dumpZF (u);
+			}
+			break;
+		default:
+			for (u->t = 0; u->t <= u->M-1; u->t++)
+			{
+				S4 (u);
+				UpdateZ (u);
+				dumpZF (u);
+			}
+			break;
+	}
 }
 
 #endif
