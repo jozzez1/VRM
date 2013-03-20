@@ -1,0 +1,47 @@
+\documentclass[a4 paper, 12pt]{article}
+\usepackage[slovene]{babel}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[small, width=0.8\textwidth]{caption}
+\usepackage[pdftex]{graphicx}
+\usepackage{amssymb, amsmath, fullpage, float, hyperref, stackrel}
+
+\begin{document}
+
+\begin{center}
+\textsc{Višje računske metode}\\
+\textsc{2012/13}\\[0.5cm]
+\textbf{4. naloga -- Kubitne verige}
+\end{center}
+\begin{flushright}
+\textbf{Jože Zobec}
+\end{flushright}
+
+\section{Uvod}
+
+Oznake in definicije bodo iste, kot so v skripti.
+
+V tej nalogi imamo propagacijo po času, kot tudi po temperaturi (imaginarnem času).
+
+Ker bomo imeli opravka z veliko množenji, matrika pa je le dimenzije $4 \times 4$ in je simetrična tridiagonalna
+itd. se splača to transformacijo zakodirati naravnost v kodo. Če moramo transformirati vektor
+$\underline{x} = (x_0, x_1, x_2, x_3)^T$, se ta po propagaciji s kompleksnim koeficientom $\alpha$ za kompleksni čas
+$z$ transformira tako:
+
+\begin{equation}
+	\begin{bmatrix}
+		x_0 \\
+		x_1 \\
+		x_2 \\
+		x_3
+	\end{bmatrix}' \stackrel{U^{(2)}(\alpha z)}{\longrightarrow} \text{e}^{-\alpha z}
+	\begin{bmatrix}
+		\exp(2\alpha z) x_0 \\
+		\cosh(2\alpha z)x_1 + \sinh(2\alpha z)x_2 \\
+		\sinh(2\alpha z)x_1 + \cosh(2\alpha z)x_2 \\
+		\exp(2\alpha z) x_3
+	\end{bmatrix}.
+\end{equation}
+
+\end{document}
+
