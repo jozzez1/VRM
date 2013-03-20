@@ -17,6 +17,7 @@ typedef struct
 	    M,               // maximum time iteration
 	    t,               // current integration index -- h*t = beta
 	    s,               // which integrator to use ...
+	    E,               // yes to energy!
 	    G;               // maximum number of vectors to be averaged
 
 	gsl_rng * rand;      // random number generator
@@ -27,20 +28,21 @@ typedef struct
 	       F,            // free energy
 	       h;            // step length -- temporal or thermal
 
-	double complex ** g;  // vector of state vectors
+	double complex ** g,  // vector of state vectors
+	       H;             // Hamiltonian average energy -- can be a complex number
 } hod;
 
-// funkcija zagrabi na i,i+1 mestu in ga transformira s
-// propagatorjem u
+// propagator U grabs on the i,i+1 component of the j-th
+// vector
 void Utrans (hod * u, double complex a, int i, int j)
 {
 	int n = 2*i;
 
-	double complex p  = a*u->h,
+	double complex p  = (-1)*a*u->h,
 	               x1 = u->g[j][n+1];
 
 	if (u->T == 1)
-		p *= (-1)*I;
+		p *= I;
 
 	// we take periodic boundaries 
 	u->g[j][n]  *= cexp((-1)*p) * cexp(2*p);
@@ -159,10 +161,60 @@ void S5 (hod * u)
 
 void UpdateF (hod * u)
 {
-	u->F = (-1.0)/(u->t * u->h) * log (u->Z);
+	u->F = (-2.0)/(u->t * u->h) * log (u->Z);
 }
 
-void UpdateZ (hod * u)
+// Hamiltonian part
+void Atrans (hod * u, double complex * x, int i, int j)
+{
+	int n = 2*i;
+
+	// again the periodic boundary condition
+	x[n] = u->g[j][n];
+	x[n+1] = u->g[j][(n+2)%u->N] - u->g[j][n+1];
+	x[(n+2)%u->N] = u->g[j][n+1] - u->g[j][(n+2)%u->N];
+	x[(n+3)%u->N] = u->g[j][(n+3)%u->N];
+}
+
+// with this we do <i,i+1| H |i,i+1>_j ... to make it clear
+// we write the hamiltonian average in the u->H
+void Hamilton_step (hod * u, double complex * H, int j)
+{
+	int i,
+	    n = u->N/2;
+
+	// the even run
+	for (i = 0; i <= n-1; i += 2)
+		Atrans (u, H, i, j);
+
+	// the odd run
+	for (i = 1; i <= n-1; i += 2)
+		Atrans (u, H, i, j);
+
+	// we calculate the energy
+	double complex S = 0.0 + 0.0*I;
+	for (i = 0; i <= u->N-1; i++)
+		S += conj (u->g[j][i]) * H[i]; printf ("S = %lf\n", creal (S));
+
+	// we update the hamiltonian
+	u->H = u->H*(1 - 1.0/(j+1)) + S/(j+1);
+}
+
+void UpdateH (hod * u)
+{
+	u->H = 0.0 + 0.0*I;
+
+	double complex * H = (double complex *) malloc (u->N * sizeof (double complex));
+
+	int j;
+	for (j = 0; j <= u->G-1; j++)
+		Hamilton_step (u, H, j);
+
+	free (H);
+	u->H /= u->Z;
+}
+
+void UpdateZFH (hod * u)
 {
 	u->Z = 0;
 
@@ -178,6 +230,9 @@ void UpdateZ (hod * u)
 	}
 
 	UpdateF (u);
+
+	if (u->E == 1)
+		UpdateH (u);
 }
 
 void init_vec (hod * u, int j)
@@ -201,10 +256,11 @@ void init_vec (hod * u, int j)
 		u->g[j][i] /= S;
 }
 
-void init (hod * u, int N, int T, int M, int s, int G, double h, char * dat)
+void init (hod * u, int N, int T, int E, int M, int s, int G, double h, char * dat)
 {
 	u->N = pow(2,N);
 
+	u->E = E;
 	u->T = T;
 	u->M = M;
 	u->s = s;
@@ -213,6 +269,8 @@ void init (hod * u, int N, int T, int M, int s, int G, double h, char * dat)
 	u->Z = 0;
 	u->F = 0;
 	u->h = h;
+
+	u->H = 0.0 + 0.0*I;
 
 	u->fout = fopen (dat, "w");
 
@@ -233,13 +291,20 @@ void destroy (hod * u)
 
 	free (u->g);
 	gsl_rng_free (u->rand);
+	
+	fclose (u->fout);
 
 	free (u);
 }
 
-void dumpZF (hod * u)
+void dumpZFH (hod * u)
 {
-	fprintf (u->fout, "% 15lf % 15lf % 15lf\n", u->t*u->h, u->Z, u->F);
+	if (u->E == 0)
+		fprintf (u->fout, "% 15lf % 15e % 15e\n", u->t*u->h, u->Z, u->F);
+
+	else if (u->E == 1)
+		fprintf (u->fout, "% 15lf % 15e % 15e % 15e % 15e\n",
+				u->t*u->h, u->Z, u->F, creal (u->H), cimag (u->H));
 }
 
 void simple_propagate (hod * u)
@@ -251,48 +316,48 @@ void simple_propagate (hod * u)
 			for (u->t = 0; u->t <= u->M-1; u->t++)
 			{
 				Asym (u);
-				UpdateZ (u);
-				dumpZF (u);
+				UpdateZFH (u);
+				dumpZFH (u);
 			}
 			break;
 		case 2:
 			for (u->t = 0; u->t <= u->M-1; u->t++)
 			{
 				S2 (u);
-				UpdateZ (u);
-				dumpZF (u);
+				UpdateZFH (u);
+				dumpZFH (u);
 			}
 			break;
 		case 3:
 			for (u->t = 0; u->t <= u->M-1; u->t++)
 			{
 				S3 (u);
-				UpdateZ (u);
-				dumpZF (u);
+				UpdateZFH (u);
+				dumpZFH (u);
 			}
 			break;
 		case 4:
 			for (u->t = 0; u->t <= u->M-1; u->t++)
 			{
 				S4 (u);
-				UpdateZ (u);
-				dumpZF (u);
+				UpdateZFH (u);
+				dumpZFH (u);
 			}
 			break;
 		case 5:
 			for (u->t = 0; u->t <= u->M-1; u->t++)
 			{
 				S5 (u);
-				UpdateZ (u);
-				dumpZF (u);
+				UpdateZFH (u);
+				dumpZFH (u);
 			}
 			break;
 		default:
 			for (u->t = 0; u->t <= u->M-1; u->t++)
 			{
 				S4 (u);
-				UpdateZ (u);
-				dumpZF (u);
+				UpdateZFH (u);
+				dumpZFH (u);
 			}
 			break;
 	}

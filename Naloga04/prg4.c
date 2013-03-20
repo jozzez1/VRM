@@ -19,12 +19,13 @@ int main (int argc, char ** argv)
 	    M = 100,
 	    s = 4,
 	    G = 10,
+	    E = 0,
 	    y = 0,
 	    arg;
 
 	opterr = 1;
 
-	while ((arg = getopt (argc, argv, "o:h:N:M:s:G:Tl")) != -1)
+	while ((arg = getopt (argc, argv, "o:h:N:M:s:G:TEl")) != -1)
 	{
 		switch (arg)
 		{
@@ -39,6 +40,9 @@ int main (int argc, char ** argv)
 				break;
 			case 'T':
 				T = 1;
+				break;
+			case 'E':
+				E = 1;
 				break;
 			case 'M':
 				M = atoi (optarg);
@@ -57,6 +61,7 @@ int main (int argc, char ** argv)
 				printf ("-l -- prints this list\n");
 				printf ("-o -- name of the output file\n");
 				printf ("-y -- save output file\n");
+				printf ("-E -- calculate the average energy\n");
 				printf ("-h (0.01) set the integrator step\n");
 				printf ("-N (3) set the number of qubits\n");
 				printf ("-T (no) time flag\n");
@@ -73,23 +78,23 @@ int main (int argc, char ** argv)
 	if (dat == NULL)
 	{
 		dat = (char *) malloc (30 * sizeof (char));
-		sprintf (dat, "zoft-G%d-M%d", G, M);
+		sprintf (dat, "zoft-G%d-M%d-E%d", G, M, E);
 	}
 
 	sprintf (file, "%s.txt", dat);
 
 	hod * u = (hod *) malloc (sizeof (hod));
-	init (u, N, T, M, s, G, h, file);
-	free (file);
+	init (u, N, T, E, M, s, G, h, file);
 
 	simple_propagate (u);
 	destroy (u);
 
-	char * command = (char *) malloc (20 * sizeof (char));
-	sprintf (command, "./plot4.sh %s %d", dat, y);
+	char * command = (char *) malloc (35 * sizeof (char));
+	sprintf (command, "./plot4.sh %s %d %d", dat, y, E);
 	system (command);
 
 	free (command);
+	free (file);
 	free (dat);
 	  
 	return 0;

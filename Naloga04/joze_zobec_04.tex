@@ -17,6 +17,10 @@
 \textbf{Jože Zobec}
 \end{flushright}
 
+\newcommand{\e}{
+	\ensuremath{\text{e}}
+}
+
 \section{Uvod}
 
 Oznake in definicije bodo iste, kot so v skripti.
@@ -25,7 +29,7 @@ V tej nalogi imamo propagacijo po času, kot tudi po temperaturi (imaginarnem č
 
 Ker bomo imeli opravka z veliko množenji, matrika pa je le dimenzije $4 \times 4$ in je simetrična tridiagonalna
 itd. se splača to transformacijo zakodirati naravnost v kodo. Če moramo transformirati vektor
-$\underline{x} = (x_0, x_1, x_2, x_3)^T$, se ta po propagaciji s kompleksnim koeficientom $\alpha$ za kompleksni čas
+$\underline{x} = (x_0, x_1, x_2, x_3)^T$, se ta po propagaciji s kompleksnim koeficientom $\alpha$ za kompleksni korak
 $z$ transformira tako:
 
 \begin{equation}
@@ -34,14 +38,61 @@ $z$ transformira tako:
 		x_1 \\
 		x_2 \\
 		x_3
-	\end{bmatrix}' \stackrel{U^{(2)}(\alpha z)}{\longrightarrow} \text{e}^{-\alpha z}
+	\end{bmatrix} \stackrel{U^{(2)}(\alpha z)}{\longrightarrow} \text{e}^{-\alpha z}
 	\begin{bmatrix}
 		\exp(2\alpha z) x_0 \\
 		\cosh(2\alpha z)x_1 + \sinh(2\alpha z)x_2 \\
 		\sinh(2\alpha z)x_1 + \cosh(2\alpha z)x_2 \\
 		\exp(2\alpha z) x_3
 	\end{bmatrix}.
+	\label{eqn:U}
 \end{equation}
+
+Temperaturni propagator je $\sim \exp(-\beta H)$, in časovni je $\sim \exp (-itH)$, kjer sta $\beta$ in $t$ realni
+količini\footnote{$t$ -- brezdimenzijski čas, $\beta$ -- recipročna brezdimenzijska temperatura}. Odtod vidimo, da
+je $z$ čisto imaginarno število za čas in čisto realno število za temperaturni premik. Oz. drugače povedano
+
+\[
+	|\psi(t)\rangle = \e^{-itH}, \qquad |\psi(-i\beta)\rangle = \e^{-\beta H}.
+\]
+
+\subsection{Hamiltonian}
+
+Propagator smo dobili tako, da smo Hamiltonian razcepili na operatorja $A$ in $B$, eden delce "`prime"' na sodih,
+drugi pa na lihih mestih. Če to matriko zapišemo zgolj za dvodelčno stanje, lahko hamiltonian zapišemo s pomočjo
+matrike $A^{(2)}$, ki sedaj deluje le na enem paru fermionov:
+
+\[
+	A^{(2)} = \begin{bmatrix}
+		1 &  &  &  \\
+		&-1 &\ 1 &  \\
+		 & \quad 1 & -1 &  \\
+		 &  &  & 1
+		\end{bmatrix},
+\]
+
+kjer moramo s to matriko izmenično delovati na pare fermionov -- enkrat na vse sode, drugič na vse lihe. Vendar pa vemo,
+da produkt vseh sodih z vsemi lihimi komutira, kot vidimo že na matriki sami. Zaradi konstrukcije matrike zadošča
+za delujemo s centralnim blokom in haramo po matriki, vendar je delovanje na dvodelnčno stanje enako učinkovito. Po
+vzoru enačbe~\eqref{eqn:U} napišemo
+
+\begin{equation}
+	\begin{bmatrix}
+		x_0 \\
+		x_1 \\
+		x_2 \\
+		x_3
+	\end{bmatrix} \stackrel{A^{(2)}}{\longrightarrow}
+	\begin{bmatrix}
+		x_0 \\
+		x_2 - x_1 \\
+		x_1 - x_2 \\
+		x_3
+	\end{bmatrix}.
+\end{equation}
+
+Tako lahko izračunamo $H|\psi\rangle$ s tem, da z operatorjem $A^{(2)}$ najprej prevozimo vse lihe, nato pa še vse sode
+pare. Na ta način smo si močno prikrajšali delo za izračun $\langle\psi | H | \psi\rangle$.
 
 \end{document}
 
