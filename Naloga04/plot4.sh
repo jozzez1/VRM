@@ -3,6 +3,7 @@
 DAT=$1
 SAVE=$2
 ENER=$3
+NUM=$4
 
 if [ ${ENER} -ne 1 ]; then
 
@@ -10,8 +11,11 @@ if [ ${ENER} -ne 1 ]; then
 	set tics nomirror;
 	set autoscale y2;
 	set key top left;
+	set label \"N = $NUM\" at screen 0.72,0.3;
 	set y2tics;
 	set log y2;
+	set ylabel 'F';
+	set y2label 'Z';
 	plot \"$DAT.txt\" u 1:3 w l title 'F' axes x1y1;
 	replot \"$DAT.txt\" u 1:2 w l lt 3 title 'Z' axes x1y2" | gnuplot -p
 	
@@ -26,6 +30,7 @@ if [ ${ENER} -ne 1 ]; then
 		set y2tics;
 		set log y2;
 		set tics out;
+		set label \"N = $NUM\" at screen 0.72,0.3;
 		set title 'Prosta energija';
 		set xlabel '"'$\beta$'"';
 		set ylabel '"'$F$'"';
@@ -34,7 +39,7 @@ if [ ${ENER} -ne 1 ]; then
 		replot \"$DAT.txt\" 1:2 w l lt 3 title '"'$Z(\beta)$'"' axes x1y2 "| gnuplot
 	
 		epstopdf $DAT.eps
-		PIC="joze_zobec_03.tex"
+		PIC="joze_zobec_04.tex"
 	
 		echo >> $PIC
 		echo '\begin{figure}[H]'               >> $PIC
@@ -48,8 +53,6 @@ if [ ${ENER} -ne 1 ]; then
 		echo '\end{figure}'                    >> $PIC
 		echo >> $PIC
 
-
-
 	fi
 
 else
@@ -61,6 +64,7 @@ else
 	set y2tics;
 	set ylabel 'E'
 	set y2label 'Z'
+	set label \"N = $NUM\" at screen 0.72,0.3;
 	set log y2;
 	plot \"$DAT.txt\" u 1:4 w l title 'Re (E)' axes x1y1;
 	replot \"$DAT.txt\" u 1:5 w l lt 3 title 'Im (E)' axes x1y1;
