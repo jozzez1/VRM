@@ -194,7 +194,7 @@ void Hamilton_step (hod * u, double complex * H, int j)
 	// we calculate the energy
 	double complex S = 0.0 + 0.0*I;
 	for (i = 0; i <= u->N-1; i++)
-		S += conj (u->g[j][i]) * H[i]; printf ("S = %lf\n", creal (S));
+		S += conj (u->g[j][i]) * H[i];
 
 	// we update the hamiltonian
 	u->H = u->H*(1 - 1.0/(j+1)) + S/(j+1);
@@ -305,11 +305,22 @@ void dumpZFH (hod * u)
 	else if (u->E == 1)
 		fprintf (u->fout, "% 15lf % 15e % 15e % 15e % 15e\n",
 				u->t*u->h, u->Z, u->F, creal (u->H), cimag (u->H));
+
+	// progress bar
+	int percent = 20*u->t/u->M,
+	    i;
+
+	printf ("% 4.0lf%% [", (100.0*u->t)/u->M);
+	for (i = 0; i <= percent-1; i++)
+		printf ("=");
+	printf (">");
+	for (; i<= 18; i++)
+		printf (" ");
+	printf ("]\n\033[F\033[J");
 }
 
 void simple_propagate (hod * u)
 {
-
 	switch (u->s)
 	{
 		case 1:

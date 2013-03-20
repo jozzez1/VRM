@@ -78,7 +78,7 @@ int main (int argc, char ** argv)
 	if (dat == NULL)
 	{
 		dat = (char *) malloc (30 * sizeof (char));
-		sprintf (dat, "zoft-G%d-M%d-E%d", G, M, E);
+		sprintf (dat, "zoft-G%d-N%d-E%d", G, M, E);
 	}
 
 	sprintf (file, "%s.txt", dat);
@@ -86,9 +86,12 @@ int main (int argc, char ** argv)
 	hod * u = (hod *) malloc (sizeof (hod));
 	init (u, N, T, E, M, s, G, h, file);
 
+	printf ("Calculating ...\n");
 	simple_propagate (u);
 	destroy (u);
 
+	printf ("Done!\n");
+	printf ("Output written in %s.\n", file);
 	char * command = (char *) malloc (35 * sizeof (char));
 	sprintf (command, "./plot4.sh %s %d %d", dat, y, E);
 	system (command);
