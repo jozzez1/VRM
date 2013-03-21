@@ -71,28 +71,57 @@ matrike $A^{(2)}$, ki sedaj deluje le na enem paru fermionov:
 		\end{bmatrix},
 \]
 
-kjer moramo s to matriko izmenično delovati na pare fermionov -- enkrat na vse sode, drugič na vse lihe. Vendar pa vemo,
-da produkt vseh sodih z vsemi lihimi komutira, kot vidimo že na matriki sami. Zaradi konstrukcije matrike zadošča
-za delujemo s centralnim blokom in haramo po matriki, vendar je delovanje na dvodelnčno stanje enako učinkovito. Po
-vzoru enačbe~\eqref{eqn:U} napišemo
+kjer moramo s to matriko izmenično delovati na pare fermionov -- enkrat na vse sode, drugič na vse lihe. Hamiltonian
+ima še dele, s katerim delujemo na lihe. Radi bi ga zapisali v isti bazi, kot $A^{(2)}$, da ga bomo lahko sešteli
+in tako imeli le en Hamiltonski blok za dva kubita. Ker prime le lihe in imamo periodične robne pogoje, vidimo, da je
+$B^{(2)}$ seveda
+
+\[
+	B^{(2)} = \begin{bmatrix}
+		-1 & & & 1 \\
+		& 1 & & \\
+		& & 1 & \\
+		1 & & & -1
+		\end{bmatrix},
+\]
+
+kar lahko z nekaj algebre potrdimo. Po definiciji mora veljati
 
 \begin{equation}
-	\begin{bmatrix}
-		x_0 \\
-		x_1 \\
-		x_2 \\
-		x_3
-	\end{bmatrix} \stackrel{A^{(2)}}{\longrightarrow}
-	\begin{bmatrix}
-		x_0 \\
-		x_2 - x_1 \\
-		x_1 - x_2 \\
-		x_3
+	H^{(2)} = A^{(2)} + B^{(2)} = \begin{bmatrix}
+		& & & 1 \\
+		& & 1 & \\
+		& 1 & & \\
+		1 & & &
+		\end{bmatrix}.
+\end{equation}
+
+Matriko $H^{(2)}$ lahko diagonaliziramo in dobimo, da so lastne vrednosti $\lambda_{1,2} = 1$ in $\lambda_{3,4} = -1$.
+Če je naša numerična simulacija pravilna, moramo dobiti torej dobiti $\langle H \rangle_\beta
+\stackrel{\beta \to \infty}{\longrightarrow} -1$. Vse daljše kubitne verige bodo zaradi tega prav tako imele osnovno
+energijo $E_0 = -1$. Vendar pa večji hamiltoniani NISO bločno diagonalni. Če namreč seštejemo $B^{(3)}$ in $A^{(3)}$ ne
+dobimo bločno diagonalno, ampak razpršeno matriko, ker ima $B^{(3)}$ neničelne stranske bloke, zaradi periodičnih robnih
+pogojev na verigi. Hamiltonian za trodelčno verigo se glasi
+
+\begin{equation}
+	H^{(3)} = \begin{bmatrix}
+	0 & 0 & 0 & 0 & 0 & 0 & 0 & 1 \\
+	0 & 0 & 1 & 0 & 0 & 0 & 0 & 0 \\
+	0 & 1 & 0 & 0 & 0 & 0 & 0 & 0 \\
+	0 & 0 & 0 & 0 & 1 & 0 & 0 & 0 \\
+	0 & 0 & 0 & 1 & 0 & 0 & 0 & 0 \\
+	0 & 0 & 0 & 0 & 0 & 0 & 1 & 0 \\
+	0 & 0 & 0 & 0 & 0 & 1 & 0 & 0 \\
+	1 & 0 & 0 & 0 & 0 & 0 & 0 & 0
 	\end{bmatrix}.
 \end{equation}
 
-Tako lahko izračunamo $H|\psi\rangle$ s tem, da z operatorjem $A^{(2)}$ najprej prevozimo vse lihe, nato pa še vse sode
-pare. Na ta način smo si močno prikrajšali delo za izračun $\langle\psi | H | \psi\rangle$.
+Ta matrika posplošitev prejšnje. Robni pogoji dajo na najbolj izvendiagonalnih robovih matrike enice, ob diagonali pa
+se s periodo 2 ponavljata enici.
+Vendar pa je taka matrika dokaj razpršena, zaradi česar bomo morali $|\chi\rangle = H |\psi\rangle$ računati v dveh
+korakih z operatorjem $A^{(2)}$. Če preverimo, so lastne vrednosti matrike $H^{(3)}$ $\lambda_{0,1,2,3} = 1$ in
+$\lambda_{4,5,6,7} = -1$, se pravi matrika ima prave lastne vrednost. Če zaupamo našemu numeričnemu eksperimentu je to
+res za naše potrebe.
 
 \end{document}
 
