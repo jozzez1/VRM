@@ -25,7 +25,7 @@ int main (int argc, char ** argv)
 
 	opterr = 1;
 
-	while ((arg = getopt (argc, argv, "o:h:N:M:s:G:TEl")) != -1)
+	while ((arg = getopt (argc, argv, "o:h:N:M:s:G:tEl")) != -1)
 	{
 		switch (arg)
 		{
@@ -38,8 +38,8 @@ int main (int argc, char ** argv)
 			case 'N':
 				N = atoi (optarg);
 				break;
-			case 'T':
-				T = 1;
+			case 't':
+				T = 2;
 				break;
 			case 'E':
 				E = 1;
@@ -64,7 +64,7 @@ int main (int argc, char ** argv)
 				printf ("-E -- calculate the average energy\n");
 				printf ("-h (0.01) set the integrator step\n");
 				printf ("-N (3) set the number of qubits\n");
-				printf ("-T (no) time flag\n");
+				printf ("-t (no) time flag\n");
 				printf ("-M (100) max time iteration\n");
 				printf ("-s (4) integrator precision (type)\n");
 				printf ("-G (10) number of vector for averaging\n");
@@ -78,7 +78,12 @@ int main (int argc, char ** argv)
 	if (dat == NULL)
 	{
 		dat = (char *) malloc (30 * sizeof (char));
-		sprintf (dat, "zoft-G%d-N%d-E%d", G, M, E);
+
+		if (T == 0)
+			sprintf (dat, "zoft-G%d-N%d-E%d", G, N, E);
+
+		else
+			sprintf (dat, "corr-G%d-N%d-E%d", G, N, E);
 	}
 
 	sprintf (file, "%s.txt", dat);
@@ -86,14 +91,14 @@ int main (int argc, char ** argv)
 	hod * u = (hod *) malloc (sizeof (hod));
 	init (u, N, T, E, M, s, G, h, file);
 
-	printf ("Calculating ...\n");
+	printf ("\nCalculating ...\n");
 	simple_propagate (u);
 	destroy (u);
 
 	printf ("Done!\n");
 	printf ("Output written in %s.\n", file);
 	char * command = (char *) malloc (35 * sizeof (char));
-	sprintf (command, "./plot4.sh %s %d %d", dat, y, E);
+	sprintf (command, "./plot4.sh %s %d %d %d", dat, y, E + T, N);
 	system (command);
 
 	free (command);

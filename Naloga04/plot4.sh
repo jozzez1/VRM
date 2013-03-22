@@ -2,10 +2,10 @@
 
 DAT=$1
 SAVE=$2
-ENER=$3
+MODE=$3
 NUM=$4
 
-if [ ${ENER} -ne 1 ]; then
+if [ ${MODE} -eq 0 ]; then
 
 	echo "reset;
 	set tics nomirror;
@@ -55,7 +55,7 @@ if [ ${ENER} -ne 1 ]; then
 
 	fi
 
-else
+elif [ ${MODE} -eq 1 ]; then
 
 	echo "reset;
 	set tics nomirror;
@@ -69,8 +69,16 @@ else
 	plot \"$DAT.txt\" u 1:4 w l title 'Re (E)' axes x1y1;
 	replot \"$DAT.txt\" u 1:5 w l lt 3 title 'Im (E)' axes x1y2" | gnuplot -p
 
+elif [ ${MODE} -gt 1 ]; then
+
+	echo "reset;
+	set ylabel 'C';
+	set xlabel 't';
+	set label \"N = $NUM\" at screen 0.72,0.3;
+	plot \"$DAT.txt\" u 1:2 w l title 'Re (C)';
+	replot \"$DAT.txt\" u 1:3 w l lt 3 title 'Im (C)'" | gnuplot -p
+
 fi
-	
 
 #rm -rf $DAT.txt
 

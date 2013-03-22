@@ -29,7 +29,8 @@ typedef struct
 	       h;            // step length -- temporal or thermal
 
 	double complex ** g,  // vector of state vectors
-	       H;             // Hamiltonian average energy -- can be a complex number
+	       H,             // Hamiltonian average energy -- can be a complex number
+	       C;             // Spin correlation over time
 } hod;
 
 // propagator U grabs on the i,i+1 component of the j-th
@@ -41,7 +42,8 @@ void Utrans (hod * u, double complex a, int i, int j)
 	double complex p  = (-1)*a*u->h,
 	               x1 = u->g[j][n+1];
 
-	if (u->T == 1)
+	// if we will use time
+	if (u->T == 2)
 		p *= I;
 
 	// we take periodic boundaries 
@@ -165,33 +167,23 @@ void UpdateF (hod * u)
 }
 
 // with this we do <i,i+1| H |i,i+1>_j ... to make it clear
-// we write the hamiltonian average in the u->H
 // it's highly optimized
-void Hamilton_step (hod * u, double complex * H, int j)
-{
-	int i,
-	    n = u->N/2;
-
-	double complex S = 0.0 + 0.0*I;
-	for (i = 1; i <= n; i++)
-		S += conj (u->g[j][(2*i)%u->N]) * u->g[j][(2*i-1)];
-
-	S *= 2;
-
-	u->H = u->H*(1 - 1.0/(j+1)) + S/(j+1);
-}
-
 void UpdateH (hod * u)
 {
 	u->H = 0.0 + 0.0*I;
 
-	double complex * H = (double complex *) malloc (u->N * sizeof (double complex));
-
-	int j;
+	int n = u->N/2,
+	    i, j;
 	for (j = 0; j <= u->G-1; j++)
-		Hamilton_step (u, H, j);
+	{
+		double complex S = 0.0 + 0.0*I;
+		for (i = 1; i <= n; i++)
+			S += conj (u->g[j][(2*i)%u->N]) * u->g[j][(2*i-1)];
 
-	free (H);
+		S *= 2;
+		u->H = u->H*(1 - 1.0/(j+1)) + S/(j+1);
+	}
+
 	u->H /= u->Z;
 }
 
@@ -252,6 +244,7 @@ void init (hod * u, int N, int T, int E, int M, int s, int G, double h, char * d
 	u->h = h;
 
 	u->H = 0.0 + 0.0*I;
+	u->C = 0.0 + 0.0*I;
 
 	u->fout = fopen (dat, "w");
 
@@ -278,14 +271,18 @@ void destroy (hod * u)
 	free (u);
 }
 
-void dumpZFH (hod * u)
+void dump (hod * u)
 {
-	if (u->E == 0)
+	if (u->E == 0 && u->T == 0)
 		fprintf (u->fout, "% 15lf % 15e % 15e\n", u->t*u->h, u->Z, u->F);
 
-	else if (u->E == 1)
+	else if (u->E == 1 && u->T == 0)
 		fprintf (u->fout, "% 15lf % 15e % 15e % 15e % 15e\n",
 				u->t*u->h, u->Z, u->F, creal (u->H), cimag (u->H));
+
+	else if (u->T == 2)
+		fprintf (u->fout, "% 15lf % 15e % 15e\n",
+				u->t*u->h, creal (u->C), cimag (u->H));
 
 	// progress bar
 	int percent = 20*u->t/u->M,
@@ -300,59 +297,164 @@ void dumpZFH (hod * u)
 	printf ("]\n\033[F\033[J");
 }
 
+/* time correlations */
+void spin_corr_init_vec (hod * u)
+{
+	int g = u->G,
+	    n = u->N/2,
+	    i, j;
+
+	// we extend the |psi> for sigma^z |psi> = |chi>
+	u->G *= 2;
+	u->g = (double complex **) realloc ((double complex **) u->g, u->G * sizeof (double complex *));
+
+	// we initialize the |chi>-s
+	for (j = g; j <= u->G-1; j++)
+	{
+		u->g[j] = (double complex *) malloc (u->N * sizeof(double complex));
+		for (i = 0; i <= n-1; i++)
+		{
+			u->g[j][2*i] = u->g[j-g][2*i];
+			u->g[j][2*i+1] = (-1)*u->g[j-g][2*i+1];
+		}
+	}
+}
+
+/* spin corr update function */
+void UpdateC (hod * u)
+{
+	u->C = 0.0 + 0.0*I;
+
+	int n = u->N/2,
+	    g = u->G/2,
+	    i, j;
+
+	for (j = 0; j <= g-1; j++)
+	{
+		double complex S = 0.0 + I*0.0;
+		for (i = 0; i <= n-1; i++)
+		{
+			S += conj (u->g[j][2*i]) * u->g[j+g][2*i];
+			S -= conj (u->g[j][2*i + 1]) * u->g[j+g][2*i + 1];
+		}
+
+		u->C = u->C * (1 - 1.0/(j+1)) + S/(j+1);
+	}
+}
+
 void simple_propagate (hod * u)
 {
-	switch (u->s)
+	if (u->T == 0)
 	{
-		case 1:
-			for (u->t = 0; u->t <= u->M-1; u->t++)
-			{
-				Asym (u);
-				UpdateZFH (u);
-				dumpZFH (u);
-			}
-			break;
-		case 2:
-			for (u->t = 0; u->t <= u->M-1; u->t++)
-			{
-				S2 (u);
-				UpdateZFH (u);
-				dumpZFH (u);
-			}
-			break;
-		case 3:
-			for (u->t = 0; u->t <= u->M-1; u->t++)
-			{
-				S3 (u);
-				UpdateZFH (u);
-				dumpZFH (u);
-			}
-			break;
-		case 4:
-			for (u->t = 0; u->t <= u->M-1; u->t++)
-			{
-				S4 (u);
-				UpdateZFH (u);
-				dumpZFH (u);
-			}
-			break;
-		case 5:
-			for (u->t = 0; u->t <= u->M-1; u->t++)
-			{
-				S5 (u);
-				UpdateZFH (u);
-				dumpZFH (u);
-			}
-			break;
-		default:
-			for (u->t = 0; u->t <= u->M-1; u->t++)
-			{
-				S4 (u);
-				UpdateZFH (u);
-				dumpZFH (u);
-			}
-			break;
+		switch (u->s)
+		{
+			case 1:
+				for (u->t = 0; u->t <= u->M-1; u->t++)
+				{
+					Asym (u);
+					UpdateZFH (u);
+					dump (u);
+				}
+				break;
+			case 2:
+				for (u->t = 0; u->t <= u->M-1; u->t++)
+				{
+					S2 (u);
+					UpdateZFH (u);
+					dump (u);
+				}
+				break;
+			case 3:
+				for (u->t = 0; u->t <= u->M-1; u->t++)
+				{
+					S3 (u);
+					UpdateZFH (u);
+					dump (u);
+				}
+				break;
+			case 4:
+				for (u->t = 0; u->t <= u->M-1; u->t++)
+				{
+					S4 (u);
+					UpdateZFH (u);
+					dump (u);
+				}
+				break;
+			case 5:
+				for (u->t = 0; u->t <= u->M-1; u->t++)
+				{
+					S5 (u);
+					UpdateZFH (u);
+					dump (u);
+				}
+				break;
+			default:
+				for (u->t = 0; u->t <= u->M-1; u->t++)
+				{
+					S4 (u);
+					UpdateZFH (u);
+					dump (u);
+				}
+				break;
+		}
+	}
+
+	else if (u->T == 2)
+	{
+		spin_corr_init_vec (u);
+		switch (u->s)
+		{
+			case 1:
+				for (u->t = 0; u->t <= u->M-1; u->t++)
+				{
+					Asym (u);
+					UpdateC (u);
+					dump (u);
+				}
+				break;
+			case 2:
+				for (u->t = 0; u->t <= u->M-1; u->t++)
+				{
+					S2 (u);
+					UpdateC (u);
+					dump (u);
+				}
+				break;
+			case 3:
+				for (u->t = 0; u->t <= u->M-1; u->t++)
+				{
+					S3 (u);
+					UpdateC (u);
+					dump (u);
+				}
+				break;
+			case 4:
+				for (u->t = 0; u->t <= u->M-1; u->t++)
+				{
+					S4 (u);
+					UpdateC (u);
+					dump (u);
+				}
+				break;
+			case 5:
+				for (u->t = 0; u->t <= u->M-1; u->t++)
+				{
+					S5 (u);
+					UpdateC (u);
+					dump (u);
+				}
+				break;
+			default:
+				for (u->t = 0; u->t <= u->M-1; u->t++)
+				{
+					S4 (u);
+					UpdateC (u);
+					dump (u);
+				}
+				break;
+		}
 	}
 }
 
 #endif
+
