@@ -117,11 +117,50 @@ pogojev na verigi. Hamiltonian za trodelčno verigo se glasi
 \end{equation}
 
 Ta matrika posplošitev prejšnje. Robni pogoji dajo na najbolj izvendiagonalnih robovih matrike enice, ob diagonali pa
-se s periodo 2 ponavljata enici.
-Vendar pa je taka matrika dokaj razpršena, zaradi česar bomo morali $|\chi\rangle = H |\psi\rangle$ računati v dveh
-korakih z operatorjem $A^{(2)}$. Če preverimo, so lastne vrednosti matrike $H^{(3)}$ $\lambda_{0,1,2,3} = 1$ in
-$\lambda_{4,5,6,7} = -1$, se pravi matrika ima prave lastne vrednost. Če zaupamo našemu numeričnemu eksperimentu je to
-res za naše potrebe.
+se s periodo 2 ponavljata enici. Lahko napovem, da je $H^{(4)}$ taka, da prvi obdiagonali podaljšamo do matrike ranga
+16, tista priveska na robovih pa enostavno premaknemo do pravega roba.
+
+Ta matrika zgolj premeša naše komponente vektorja $\underline{x}$. Paroma jih zamenja, začenši pri $x_1$ upoštevaje
+robne pogoje na koncu. Tako delovanje $H^{(3)}$ naredimo zgolj v enem koraku, brez seštevanj in dodatnih numeričnih
+napak, ki bi pri tem nastale.
+
+\[
+	\begin{bmatrix}
+	x_0 \\
+	x_1 \\
+	x_2 \\
+	x_3 \\
+	x_4 \\
+	x_5 \\
+	x_6 \\
+	x_7
+	\end{bmatrix} \stackrel{H^{(3)}}{\longrightarrow}
+	\begin{bmatrix}
+	x_7 \\
+	x_2 \\
+	x_1 \\
+	x_4 \\
+	x_3 \\
+	x_6 \\
+	x_5 \\
+	x_0
+	\end{bmatrix}
+\]
+
+V bistvu ta matrika vse komponente z lihim indeksom premakne za eno naprej v sodi indeks, vse lihe pa za eno nazaj,
+v njim pripadujoči lihi indeks. Ko vemo to, lahko program še bolj zoptimiziramo, tako da nam sploh ni treba računati
+$|\chi\rangle = H |\psi\rangle$, ampak lahko kar takoj zapišemo kakšen je tak skalaren produkt. Za vektor
+$\underline{x}$ dimenzije $N$ je
+
+\begin{equation}
+	\underline{x}^\dagger H \underline{x} = 2\sum_{j = 0}^{N/2 - 1} = x^\dagger_{2j}x_{2j-1}, \quad x_{-1} = x_N.
+\end{equation}
+
+za kubitno verigo dolžine 3 to pomeni
+
+\[
+	\underline{x}^\dagger H \underline{x} = 2 (x_0^\dagger x_7 + x_2^\dagger x_1 + x_4^\dagger x_3 + x_6^\dagger x_5).
+\]
 
 \end{document}
 

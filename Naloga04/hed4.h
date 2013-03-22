@@ -164,44 +164,20 @@ void UpdateF (hod * u)
 	u->F = (-2.0)/(u->t * u->h) * log (u->Z);
 }
 
-// Hamiltonian part -- we only need the even run
-void Atrans (hod * u, double complex * x, int i, int j)
-{
-	int n = 2*i;
-
-	// again the periodic boundary condition, which we won't need for the even run
-	x[n] = u->g[j][n];
-	x[n+1] = u->g[j][(n+2)%u->N] - u->g[j][n+1];
-	x[(n+2)%u->N] = u->g[j][n+1] - u->g[j][(n+2)%u->N];
-	x[(n+3)%u->N] = u->g[j][(n+3)%u->N];
-}
-
 // with this we do <i,i+1| H |i,i+1>_j ... to make it clear
 // we write the hamiltonian average in the u->H
+// it's highly optimized
 void Hamilton_step (hod * u, double complex * H, int j)
 {
 	int i,
 	    n = u->N/2;
 
-	// the even run
-	for (i = 0; i <= n-1; i += 2)
-		Atrans (u, H, i, j);
-
-	// the odd run
-	double complex * x = (double complex *) malloc (u->N * sizeof (double complex));
-	for (i = 1; i <= n-1; i += 2)
-		Atrans (u, x, i, j);
-
-	// we calculate the energy
 	double complex S = 0.0 + 0.0*I;
-	for (i = 0; i <= u->N-1; i++)
-	{
-		H[i] += x[i];
-		S += conj (u->g[j][i]) * H[i];
-	}
+	for (i = 1; i <= n; i++)
+		S += conj (u->g[j][(2*i)%u->N]) * u->g[j][(2*i-1)];
 
-	free (x);
-	// we update the hamiltonian
+	S *= 2;
+
 	u->H = u->H*(1 - 1.0/(j+1)) + S/(j+1);
 }
 
