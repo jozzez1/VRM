@@ -159,8 +159,16 @@ $\underline{x}$ dimenzije $N$ je
 za kubitno verigo dolžine 3 to pomeni
 
 \[
-	\underline{x}^\dagger H \underline{x} = 2 (x_0^\dagger x_7 + x_2^\dagger x_1 + x_4^\dagger x_3 + x_6^\dagger x_5).
+	\underline{x}^\dagger H \underline{x} = 2 (x_0^* x_7 + x_2^* x_1 + x_4^*x_3 + x_6^*x_5).
 \]
+
+Predpostavka, o obliki Hamiltoniana ter skalarnem množenju se je po neumeričnem testu izkazala resnično, optimizacija
+pomeni več prostega spomina ter hitrejše delovanje.
+
+Ker so komponente $x_j$ nekorelirana kompleksna števila, pomeni da bomo na začetku imeli majhen delež imaginarne
+energije, ki pa bi moral eksponentno hitro izzveneti -- numerični eksperiment je to potrdil, kar se na grafih lepo vidi.
+Hitrost izzvenevanja je odvisna od izbire integratorja.
+Energija se cilju približuje potenčno, naklon se da določiti iz prilagajanja.
 
 \end{document}
 

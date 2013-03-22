@@ -62,13 +62,12 @@ else
 	set autoscale y2;
 	set key top left;
 	set y2tics;
-	set ylabel 'E'
-	set y2label 'Z'
+	set ylabel 'Re (E)'
+	set y2label 'Im (E)'
 	set label \"N = $NUM\" at screen 0.72,0.3;
 	set log y2;
 	plot \"$DAT.txt\" u 1:4 w l title 'Re (E)' axes x1y1;
-	replot \"$DAT.txt\" u 1:5 w l lt 3 title 'Im (E)' axes x1y1;
-	replot \"$DAT.txt\" u 1:2 w d title 'Z' axes x1y2;" | gnuplot -p
+	replot \"$DAT.txt\" u 1:5 w l lt 3 title 'Im (E)' axes x1y2" | gnuplot -p
 
 fi
 	
