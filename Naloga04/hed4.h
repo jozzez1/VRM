@@ -10,31 +10,56 @@
 #include <gsl/gsl_rng.h>
 #include <gsl/gsl_randist.h>
 
+// our "Hamiltonian" "matrix"
 typedef struct
 {
-	int N,               // vector dimension
-	    T,               // temperature flag -- our time will be i/T
-	    M,               // maximum time iteration
-	    t,               // current integration index -- h*t = beta
-	    s,               // which integrator to use ...
-	    E,               // yes to energy!
-	    G;               // maximum number of vectors to be averaged
+	int ** c,       // connections array c[0][j], connection factor, c[1][j] -- connects to, for j-th connection
+	    * b,        // number in binary
+	    N,          // total number of bits
+	    m,          // number of ones
+	    n;          // number of pairs
+} pov;
 
-	gsl_rng * rand;      // random number generator
+// the walker struct
+typedef struct
+{
+	int N,                // vector dimension
+	    T,                // temperature flag -- our time will be i/T
+	    M,                // maximum time iteration
+	    t,                // current integration index -- h*t = beta
+	    s,                // which integrator to use ...
+	    c,                // calculate-hamiltonian-flag
+	    E,                // yes to energy!
+	    G;                // maximum number of vectors to be averaged
 
-	FILE * fout;         // file for outputting the data
+	gsl_rng * rand;       // random number generator
 
-	double Z,            // vector of -z's for each psi we have a different value
-	       F,            // free energy
-	       h;            // step length -- temporal or thermal
+	FILE * fout;          // file for outputting the data
+
+	double Z,             // vector of -z's for each psi we have a different value
+	       F,             // free energy
+	       h;             // step length -- temporal or thermal
+
+	pov ** e;             // vector of state vecor connections
 
 	double complex ** g,  // vector of state vectors
 	       H,             // Hamiltonian average energy -- can be a complex number
 	       C;             // Spin correlation over time
 } hod;
 
-// propagator U grabs on the i,i+1 component of the j-th
-// vector
+// calculates binomial (n 2) = n!/[2!(n-2)!]
+// factorials are numerically too big, let's do the Pascal triangle ;)
+// (n 2) = 1 + 2 + 3 + ... + (n-1) = n (n-1)/2
+int binom (int n)
+{
+	int re = 0;
+	if (n >= 2)
+		re = n * (n - 1);
+
+	return re/2;
+}
+
+// propagator U grabs on the i,i+1 component of the j-th vector
 void Utrans (hod * u, double complex a, int i, int j)
 {
 	int n = 2*i;
@@ -133,7 +158,7 @@ void S3 (hod * u)
 {
 	int j;
 	for (j = 0; j <= u->G-1; j++)
-		S3doer (u, 0, 1, j);
+		S3doer (u, 0, 2, j); // used to be u,0,1,j
 }
 
 void S4 (hod * u)
@@ -156,8 +181,9 @@ void S5 (hod * u)
 	int j;
 	for (j = 0; j <= u->G-1; j++)
 	{
-		S3doer (u, 0, 0.5, j);
-		S3doer (u, 1, 0.5, j);
+		                     // fixed for correct time
+		S3doer (u, 0, 1, j); // used to be u,0,0.5,j
+		S3doer (u, 1, 1, j); // used to be u,1,0.5,j
 	}
 }
 
@@ -166,24 +192,101 @@ void UpdateF (hod * u)
 	u->F = (-2.0)/(u->t * u->h) * log (u->Z);
 }
 
-// with this we do <i,i+1| H |i,i+1>_j ... to make it clear
-// it's highly optimized
+// takes care of diagonal connections
+void binary (pov * e, int x)
+{
+	e->c[1][0] = x;
+
+	int i;
+	for (i = 0; i <= e->N-1; i++)
+	{
+		e->b[i] = x%2;
+		x /= 2;
+
+		if (e->b[i] == 1)
+			e->m++;
+	}
+
+	e->c[0][0] = binom (e->N - e->m) + binom (e->m) - (e->N - e->m)*e->m;
+}
+
+// non-diagonal connections of number x
+void connect_e (pov * e, int x)
+{
+	int i;
+	binary (e, x);
+
+	// some boundary conditions are their own stuff
+	for (i = 0; i <= e->N - 1; i++)
+	{
+		// if we find 01, but b is reversed, thus 10
+		if (e->b[i] == 1 && e->b[(i+1)%e->N] == 0)
+		{
+			e->n++;
+			e->c[0] = (int *) realloc ((int *) e->c[0],
+					e->n * sizeof (int));
+			e->c[1] = (int *) realloc ((int *) e->c[1],
+					e->n * sizeof (int));
+
+			e->c[0][e->n-1] = 2;
+			e->c[1][e->n-1] = x - (int) pow (2, i) + (int) pow (2, (i+1)%e->N);
+		}
+
+		// if we find an 10, but b is reversed, thus 01
+		if (e->b[i] == 0 && e->b[(i+1)%e->N] == 1)
+		{
+			e->n++;
+			e->c[0] = (int *) realloc ((int *) e->c[0],
+					e->n * sizeof (int));
+			e->c[1] = (int *) realloc ((int *) e->c[1],
+					e->n * sizeof (int));
+
+			e->c[0][e->n-1] = 2;
+			e->c[1][e->n-1] = x - (int) pow (2, (i+1)%e->N) + (int) pow (2, i);
+		}
+	}
+}
+
+// init e
+void init_e (pov * e, int N)
+{
+	e->N = N;
+	e->m = 0;
+	e->n = 1;
+
+	e->b = (int *) malloc (e->N * sizeof (int));
+
+	e->c = (int **) malloc (2 * sizeof (int *));
+	
+	e->c[0] = (int *) malloc (sizeof (int));
+	e->c[1] = (int *) malloc (sizeof (int));
+}
+
+void destroy_e (pov * e)
+{
+	free (e->b);
+	free (e->c[0]);
+	free (e->c[1]);
+	free (e->c);
+	free (e);
+}
+
 void UpdateH (hod * u)
 {
-	u->H = 0.0 + 0.0*I;
+	u->H = 0.0 + 0.0 * I;
 
-	int n = u->N/2,
-	    i, j;
+	int i, j, k;
 	for (j = 0; j <= u->G-1; j++)
 	{
 		double complex S = 0.0 + 0.0*I;
-		for (i = 1; i <= n; i++)
-			S += conj (u->g[j][(2*i)%u->N]) * u->g[j][(2*i-1)];
+		for (i = 0;  i <= u->N-1; i++)
+		{
+			for (k = 0; k <= u->e[i]->n-1; k++)
+				S += conj (u->g[j][i]) * u->e[i]->c[0][k] * u->g[j][u->e[i]->c[1][k]];
+		}
 
-		S *= 2;
-		u->H = u->H*(1 - 1.0/(j+1)) + S/(j+1);
+		u->H = u->H * (1 - 1.0/(j+1)) + S/(j+1);
 	}
-
 	u->H /= u->Z;
 }
 
@@ -229,7 +332,38 @@ void init_vec (hod * u, int j)
 		u->g[j][i] /= S;
 }
 
-void init (hod * u, int N, int T, int E, int M, int s, int G, double h, char * dat)
+void controlH (hod * u)
+{
+	int N = u->N,
+	    i, j;
+
+	int ** H = (int **) malloc (N * sizeof(int *));
+	for (i = 0; i <= N-1; i++)
+	{
+		H[i] = (int *) calloc (N, sizeof(int));
+		for (j = 0; j <= u->e[i]->n-1; j++)
+			H[i][u->e[i]->c[1][j]] += u->e[i]->c[0][j];
+
+		printf ("|");
+		for (j = 0; j <= N-1; j++)
+		{
+			if (H[i][j] != 0)
+				printf ("% 3d", H[i][j]);
+			else
+				printf ("   ");
+		}
+		
+		printf ("|\n");
+	}
+
+	for (i = 0; i <= N-1; i++)
+		free (H[i]);
+	free (H);
+
+	exit (EXIT_SUCCESS);
+}
+
+void init (hod * u, int N, int T, int E, int M, int s, int G, int c, double h, char * dat)
 {
 	u->N = pow(2,N);
 
@@ -238,6 +372,7 @@ void init (hod * u, int N, int T, int E, int M, int s, int G, double h, char * d
 	u->M = M;
 	u->s = s;
 	u->G = G;
+	u->c = c;
 
 	u->Z = 0;
 	u->F = 0;
@@ -251,10 +386,26 @@ void init (hod * u, int N, int T, int E, int M, int s, int G, double h, char * d
 	u->rand = gsl_rng_alloc (gsl_rng_taus);
 	gsl_rng_set (u->rand, 10248023);
 
-	int j;
+	int j,i;
 	u->g = (double complex **) malloc (u->G * sizeof (double complex *));
 	for (j = 0; j <= u->G-1; j++)
 		init_vec (u, j);
+
+	u->e = NULL;
+	if (u->E || u->c)
+	{
+		u->e = (pov **) malloc (u->N * sizeof (pov *));
+
+		for (i = 0; i <= u->N-1; i++)
+		{
+			u->e[i] = (pov *) malloc (sizeof (pov));
+			init_e (u->e[i], N);
+			connect_e  (u->e[i], i);
+		}
+
+		if (u->c == 1)
+			controlH(u);
+	}
 }
 
 void destroy (hod * u)
@@ -262,6 +413,14 @@ void destroy (hod * u)
 	int j;
 	for (j = 0; j <= u->G-1; j++)
 		free (u->g[j]);
+
+	if (u->E)
+	{
+		for (j = 0; j <= u->N-1; j++)
+			destroy_e (u->e[j]);
+
+		free (u->e);
+	}
 
 	free (u->g);
 	gsl_rng_free (u->rand);

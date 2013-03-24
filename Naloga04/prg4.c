@@ -21,11 +21,12 @@ int main (int argc, char ** argv)
 	    G = 10,
 	    E = 0,
 	    y = 0,
+	    c = 0,
 	    arg;
 
 	opterr = 1;
 
-	while ((arg = getopt (argc, argv, "o:h:N:M:s:G:tEl")) != -1)
+	while ((arg = getopt (argc, argv, "o:h:N:M:s:G:tElc")) != -1)
 	{
 		switch (arg)
 		{
@@ -53,12 +54,16 @@ int main (int argc, char ** argv)
 			case 'G':
 				G = atoi (optarg);
 				break;
+			case 'c':
+				c = 1;
+				break;
 			case 'y':
 				y = 1;
 				break;
 			case 'l':
 				printf ("List of commands:\n==========================\n");
 				printf ("-l -- prints this list\n");
+				printf ("-c -- print Hamiltonian\n");
 				printf ("-o -- name of the output file\n");
 				printf ("-y -- save output file\n");
 				printf ("-E -- calculate the average energy\n");
@@ -89,7 +94,7 @@ int main (int argc, char ** argv)
 	sprintf (file, "%s.txt", dat);
 
 	hod * u = (hod *) malloc (sizeof (hod));
-	init (u, N, T, E, M, s, G, h, file);
+	init (u, N, T, E, M, s, G, c, h, file);
 
 	printf ("\nCalculating ...\n");
 	simple_propagate (u);
