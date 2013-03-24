@@ -60,116 +60,154 @@ je $z$ čisto imaginarno število za čas in čisto realno število za temperatu
 
 Propagator smo dobili tako, da smo Hamiltonian razcepili na operatorja $A$ in $B$, eden delce "`prime"' na sodih,
 drugi pa na lihih mestih. Če to matriko zapišemo zgolj za dvodelčno stanje, lahko hamiltonian zapišemo s pomočjo
-matrike $A^{(2)}$, ki sedaj deluje le na enem paru fermionov:
+matrike $A^{(2)}$, ki sedaj deluje le na enem kubitnem paru:
 
 \[
 	A^{(2)} = \begin{bmatrix}
 		1 &  &  &  \\
-		&-1 &\ 1 &  \\
-		 & \quad 1 & -1 &  \\
+		&-1 &\ 2 &  \\
+		 & \quad 2 & -1 &  \\
 		 &  &  & 1
-		\end{bmatrix},
+		\end{bmatrix} = h_{01},
 \]
 
 kjer moramo s to matriko izmenično delovati na pare fermionov -- enkrat na vse sode, drugič na vse lihe. Hamiltonian
-ima še dele, s katerim delujemo na lihe. Radi bi ga zapisali v isti bazi, kot $A^{(2)}$, da ga bomo lahko sešteli
-in tako imeli le en Hamiltonski blok za dva kubita. Ker prime le lihe in imamo periodične robne pogoje, vidimo, da je
-$B^{(2)}$ seveda
+ima še dele, s katerim delujemo na lihe. Radi bi ga zapisali v isti bazi, kot $h_{01}$, da ga bomo lahko sešteli
+in tako imeli le en Hamiltonski blok za dva kubita. Po izračunu dobimo
 
 \[
-	B^{(2)} = \begin{bmatrix}
-		-1 & & & 1 \\
-		& 1 & & \\
-		& & 1 & \\
-		1 & & & -1
-		\end{bmatrix},
+	h_{10} =  \begin{bmatrix}
+		1 &  &  &  \\
+		&-1 &\ 2 &  \\
+		 & \quad 2 & -1 &  \\
+		 &  &  & 1
+		\end{bmatrix} = h_{01}
 \]
 
 kar lahko z nekaj algebre potrdimo. Po definiciji mora veljati
 
 \begin{equation}
-	H^{(2)} = A^{(2)} + B^{(2)} = \begin{bmatrix}
-		& & & 1 \\
-		& & 1 & \\
-		& 1 & & \\
-		1 & & &
-		\end{bmatrix}.
+	H^{(2)} = h_{01} + h_{10} = 2h_{01},
 \end{equation}
 
-Matriko $H^{(2)}$ lahko diagonaliziramo in dobimo, da so lastne vrednosti $\lambda_{1,2} = 1$ in $\lambda_{3,4} = -1$.
-Če je naša numerična simulacija pravilna, moramo dobiti torej dobiti $\langle H \rangle_\beta
-\stackrel{\beta \to \infty}{\longrightarrow} -1$. Vse daljše kubitne verige bodo zaradi tega prav tako imele osnovno
-energijo $E_0 = -1$. Vendar pa večji hamiltoniani NISO bločno diagonalni. Če namreč seštejemo $B^{(3)}$ in $A^{(3)}$ ne
-dobimo bločno diagonalno, ampak razpršeno matriko, ker ima $B^{(3)}$ neničelne stranske bloke, zaradi periodičnih robnih
-pogojev na verigi. Hamiltonian za trodelčno verigo se glasi
+ki ima lastne vrednosti $(-6, 2, 2, 2)$.
+Če je naša numerična simulacija pravilna, moramo dobiti torej dobiti $\langle H^{(2)} \rangle_\beta
+\stackrel{\beta \to \infty}{\longrightarrow} -6$. Daljše kubitne verige bodo osnovno skalirale proti 0, ker imamo
+anti-feromagnet. Recimo, za verigo dolžine $3$ se lahko v potu svojega obraza prebijemo do hamiltoniana
 
 \begin{equation}
 	H^{(3)} = \begin{bmatrix}
-	0 & 0 & 0 & 0 & 0 & 0 & 0 & 1 \\
-	0 & 0 & 1 & 0 & 0 & 0 & 0 & 0 \\
-	0 & 1 & 0 & 0 & 0 & 0 & 0 & 0 \\
-	0 & 0 & 0 & 0 & 1 & 0 & 0 & 0 \\
-	0 & 0 & 0 & 1 & 0 & 0 & 0 & 0 \\
-	0 & 0 & 0 & 0 & 0 & 0 & 1 & 0 \\
-	0 & 0 & 0 & 0 & 0 & 1 & 0 & 0 \\
-	1 & 0 & 0 & 0 & 0 & 0 & 0 & 0
-	\end{bmatrix}.
+	3 & 0 & 0 & 0 & 0 & 0 & 0 & 0 \\
+	0 & -1 & 2 & 0 & 2 & 0 & 0 & 0 \\
+	0 & 2 & -1 & 0 & 2 & 0 & 0 & 0 \\
+	0 & 0 & 0 & -1 & 0 & 2 & 2 & 0 \\
+	0 & 2 & 2 & 0 & -1 & 0 & 0 & 0 \\
+	0 & 0 & 0 & 2 & 0 & -1 & 2 & 0 \\
+	0 & 0 & 0 & 2 & 0 & 2 & -1 & 0 \\
+	0 & 0 & 0 & 0 & 0 & 0 & 0 & 3
+	\end{bmatrix},
 \end{equation}
 
-Ta matrika posplošitev prejšnje. Robni pogoji dajo na najbolj izvendiagonalnih robovih matrike enice, ob diagonali pa
-se s periodo 2 ponavljata enici. Lahko napovem, da je $H^{(4)}$ taka, da prvi obdiagonali podaljšamo do matrike ranga
-16, tista priveska na robovih pa enostavno premaknemo do pravega roba.
+ki se v diagonalni obliki zapiše kot $\text{diag}(-3, -3, -3, -3, 3, 3, 3, 3)$.
 
-Ta matrika zgolj premeša naše komponente vektorja $\underline{x}$. Paroma jih zamenja, začenši pri $x_1$ upoštevaje
-robne pogoje na koncu. Tako delovanje $H^{(3)}$ naredimo zgolj v enem koraku, brez seštevanj in dodatnih numeričnih
-napak, ki bi pri tem nastale.
+Vendar pa je narediti tako matriko težko in se potrati veliko procesorskega časa s Kroneckerjevim produktom,
+nato pa še z matričnim množenjem. Vendar pa mi lahko isto naredimo na boljši način. Izkoristimo namreč lahko
+to, da je naš vektor $\underline{x}$ v resnici nekakšen spinor
 
 \[
-	\begin{bmatrix}
-	x_0 \\
-	x_1 \\
-	x_2 \\
-	x_3 \\
-	x_4 \\
-	x_5 \\
-	x_6 \\
-	x_7
-	\end{bmatrix} \stackrel{H^{(3)}}{\longrightarrow}
-	\begin{bmatrix}
-	x_7 \\
-	x_2 \\
-	x_1 \\
-	x_4 \\
-	x_3 \\
-	x_6 \\
-	x_5 \\
-	x_0
-	\end{bmatrix}
+	\underline{x} = x_0|000\rangle + x_1|001\rangle + x_2|010\rangle + x_3|011\rangle + \ldots
 \]
 
-V bistvu ta matrika vse komponente z lihim indeksom premakne za eno naprej v sodi indeks, vse lihe pa za eno nazaj,
-v njim pripadujoči lihi indeks. Ko vemo to, lahko program še bolj zoptimiziramo, tako da nam sploh ni treba računati
-$|\chi\rangle = H |\psi\rangle$, ampak lahko kar takoj zapišemo kakšen je tak skalaren produkt. Za vektor
-$\underline{x}$ dimenzije $N$ je
+komponente pa ima prikladno urejene. Naš hamiltonian je simetričen preko diagonale $H_{00} - H_{NN}$,
+vendar pa je simetričen tudi preko diagonale $H_{0N} - H_{N0}$, kar pomeni, da lahko število ničel in
+enic v stanju zamenjamo in bo matrični element isti.
 
-\begin{equation}
-	\underline{x}^\dagger H \underline{x} = 2\sum_{j = 0}^{N/2 - 1} x^*_{2j}x_{2j-1}, \quad x_{-1} = x_N.
-\end{equation}
-
-za kubitno verigo dolžine 3 to pomeni
+Če delujemo z operatorjem na enotski vektor v tem prostoru, ki ga bom zaenkrat označil s $\psi\rangle$,
+dobimo
 
 \[
-	\underline{x}^\dagger H \underline{x} = 2 (x_0^* x_7 + x_2^* x_1 + x_4^*x_3 + x_6^*x_5).
+	H|\psi\rangle = \sum_{j=0}^{N-1} \big(2\sigma_j^+\sigma_{j+1}^- + \sigma^z_j\sigma^z_{j+1} + \text{h.c.}\big)
+		|\overbrace{00\ldots0}^{n}\overbrace{11\ldots1}^{m}\rangle,
 \]
 
-Predpostavka, o obliki Hamiltoniana ter skalarnem množenju se je po neumeričnem testu izkazala resnično, optimizacija
-pomeni več prostega spomina ter hitrejše delovanje.
+kaj potem pravzaprav dobimo?
 
-Ker so komponente $x_j$ nekorelirana kompleksna števila, pomeni da bomo na začetku imeli majhen delež imaginarne
-energije (disipacija), ki pa bi moral eksponentno hitro izzveneti -- numerični eksperiment je to potrdil, kar se na
-grafih lepo vidi.
-Hitrost izzvenevanja je odvisna od izbire integratorja.
-Energija se cilju približuje potenčno, naklon se da določiti iz prilagajanja.
+Poiščimo najprej diagonalni del, saj je ta lažji. Zaradi simetrije na zamenjavo $0 \leftrightarrow 1$ mora izraz imeti
+isto lastnost in ni važno, če so ničle in enice v stanju premešane. Izkaže se, da za $m,n \geq 2$ velja
+
+\[
+	H^z|\psi\rangle = \sum_{j=0}^{N-1}\sigma^z_j\sigma^z_{j+1}|\overbrace{0\ldots0}^n \overbrace{1\ldots1}^m\rangle = \bigg[\binom{n}{2} + \binom{m}{2} - mn\bigg]|\psi\rangle,
+\]
+
+kjer je
+
+\[
+	\binom{n}{k} = \frac{n!}{k!(n-k)!},
+\]
+
+nam vsem dobro znani binomski simbol. Izvendiagonalne elemente je poiskati dosti težje, saj bomo dobili mešanje
+z večimi komponentami vektorjev.
+
+Če imamo neko enotsko stanje $\psi\rangle$, ga lahko v naši bazi zapišemo kot
+
+\[
+	|\psi\rangle = |\overset{0}{\underset{n-1}{s_0}}\ \overset{1}{\underset{n-2}{s_1}}\ldots
+		\overset{n-1-j}{\underset{j}{s_{n-1-j}}}\ldots\overset{n-1}{\underset{0}{s_{n-1}}}\rangle,
+\]
+
+zgornja številka pomeni kje smo, če štejemo stanje kubita, druga pa pač na katerem, "`bitu"' smo v vektorju stanj.
+
+Ko na ta enotski vektor delujemo z izvendiagonalnim delom hamiltoniana dobimo (h.c. člen bomo upoštevali pozneje)
+
+\[
+	H^\pm|\psi\rangle = 2\sum_{j=0}^{N-1}(\sigma^+_j\sigma^-_{j+1})
+		|0\ldots0\stackrel{j}{1}0\ldots0\rangle = 2|0\ldots0\stackrel{j+1}{1}0\ldots0\rangle,
+\]
+
+če je ta $|\psi\rangle$ ponazarjal enotski vektor $k$-te komponente, potem ga ta operator poveže s
+`$k + 2^{n-1-j}$'-to komponento.
+
+To je bil trivialen primer, ko se je to zgodilo enkrat, sicer pa moramo to storiti tolikokrat, kolikokrat se
+pojavi par $01$. Števili stanji $0$ in $1$ morata biti sosednji upoštevaje robni pogoj.
+Zaradi hermitsko konjugiranega člena bo ista povezava veljala
+tudi nazaj, tj.
+$k + 2^{n-1-j}$-ti člen bo povezan s $k$-tim, zaradi simetrije skozi drugo diagonalo, se bodo iste povezave
+veljale tudi za $k+N/2$-ti člen ter $k+N/2+2^{n-1-j}$-ti člen. Tako ne potrebujemo cele matrike, ampak samo
+povezave, kar bi moralo bistveno olajšati množenje s Hamiltonianom, ki je v bistvu razpršena matrika ranga
+$2^n$, z nekaj neničelnimi členi. Lahko sicer napovemo koliko jih je. Če je matrika ranga $N$, je št.
+neničelnih členov enako $M$,
+
+\[
+	M = 2 + \frac{}{}
+\]
+
+Za spinsko korelacijo $C(t)$ in korelacijo spinskega toka $C(t)_J$ imamo to smolo, da naš operator ne
+komutira s hamiltonianom, to pa pomeni, da ne komutira s propagatorjem, zaradi česar moramo poleg propagiranja
+$|\psi(0)\rangle$ propagirati skozi čas tudi $|\chi (0)\rangle = \sigma^z (0)|\psi (0)\rangle$. Še vedno
+lahko optimiziramo $\langle \psi(t)|\sigma^z(0)|\chi(t)\rangle$, ki je potem
+
+\[
+	\underline{x}^\dagger \sigma^z(0) \underline{y} = \sum_{j = 0}^{N/2 - 1} (x^*_{2j}y_{2j} -
+		x^*_{2j+1}y_{2j+1}),
+\]
+
+saj je spinski operator sila preprost. Isto bi radi storili še za $J_{j,j+1}$. Zapišimo ga v prikladnejšo obliko:
+
+\[
+	J_{j,j+1} = \sigma^x_j\sigma^y_{j+1} - \sigma^y_j\sigma^x_{j+1} =
+		2i(\sigma^+_j \sigma^-_{j+1} - \sigma^-_j\sigma^+_{j+1}).
+\]
+
+V bazi od prej, lahko analogno zapišemo matriko $J^{(2)}$ kot
+
+\[
+	J^{(2)} = -2\begin{bmatrix}
+		0 & 0 & 0 & 0 \\
+		0 & 0 & -i & 0 \\
+		0 & i & 0 & 0 \\
+		0 & 0 & 0 & 0
+		\end{bmatrix}.
+\]
 
 \end{document}
 

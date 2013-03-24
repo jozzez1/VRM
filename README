@@ -4,7 +4,7 @@ VRM - Višje Računske Metode
 dependencies:
 Lapack  -- Linear Algebra PACKage
 ATLAS   -- Automatically Tuned Linear Algebra Software
-blas    -- Basic Liean Algebra Subprograms
+blas    -- Basic Linear Algebra Subprograms
 gsl     -- GNU Scientific Library
 gnuplot -- needed to run the plotter and animation scripts
 mplayer -- to create animations with mencoder and play them
