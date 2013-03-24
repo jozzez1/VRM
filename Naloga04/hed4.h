@@ -10,14 +10,17 @@
 #include <gsl/gsl_rng.h>
 #include <gsl/gsl_randist.h>
 
-// our "Hamiltonian" "matrix"
+// our "matrix" for matrix element calculation
 typedef struct
 {
-	int ** c,       // connections array c[0][j], connection factor, c[1][j] -- connects to, for j-th connection
+	int ** c,       // connections array
 	    * b,        // number in binary
 	    N,          // total number of bits
 	    m,          // number of ones
-	    n;          // number of pairs
+	    n;          // number of connections
+
+	// c[0][j] -- connection factor,
+	// c[1][j] -- connects to, for j-th connection
 } pov;
 
 // the walker struct
@@ -30,14 +33,18 @@ typedef struct
 	    s,                // which integrator to use ...
 	    c,                // calculate-hamiltonian-flag
 	    E,                // yes to energy!
+	    J,                // yes to spin current! :PPPP
 	    G;                // maximum number of vectors to be averaged
 
 	gsl_rng * rand;       // random number generator
 
 	FILE * fout;          // file for outputting the data
 
+	void (* connect) (pov *, int); // function pointer to connection function
+
 	double Z,             // vector of -z's for each psi we have a different value
 	       F,             // free energy
+	       d,             // anisotropic factor in the hamiltonian
 	       h;             // step length -- temporal or thermal
 
 	pov ** e;             // vector of state vecor connections
@@ -195,9 +202,9 @@ void UpdateF (hod * u)
 // takes care of diagonal connections
 void binary (pov * e, int x)
 {
-	e->c[1][0] = x;
-
 	int i;
+	e->c[0][0] = 0;
+	e->c[1][0] = x;
 	for (i = 0; i <= e->N-1; i++)
 	{
 		e->b[i] = x%2;
@@ -206,17 +213,18 @@ void binary (pov * e, int x)
 		if (e->b[i] == 1)
 			e->m++;
 	}
-
-	e->c[0][0] = binom (e->N - e->m) + binom (e->m) - (e->N - e->m)*e->m;
 }
 
-// non-diagonal connections of number x
-void connect_e (pov * e, int x)
+// identity connection
+void connect_Id (pov * e, int x)
+{
+	e->c[0][0] = 1;
+}
+
+// matrix elements of Hamiltonian
+void connect_E (pov * e, int x)
 {
 	int i;
-	binary (e, x);
-
-	// some boundary conditions are their own stuff
 	for (i = 0; i <= e->N - 1; i++)
 	{
 		// if we find 01, but b is reversed, thus 10
@@ -230,9 +238,49 @@ void connect_e (pov * e, int x)
 
 			e->c[0][e->n-1] = 2;
 			e->c[1][e->n-1] = x - (int) pow (2, i) + (int) pow (2, (i+1)%e->N);
+
+			e->c[0][0] -= 1;
 		}
 
 		// if we find an 10, but b is reversed, thus 01
+		if (e->b[i] == 0 && e->b[(i+1)%e->N] == 1)
+		{
+			e->n++;
+			e->c[0] = (int *) realloc ((int *) e->c[0],
+					e->n * sizeof (int));
+			e->c[1] = (int *) realloc ((int *) e->c[1],
+					e->n * sizeof (int));
+
+			e->c[0][e->n-1] = 2;
+			e->c[1][e->n-1] = x - (int) pow (2, (i+1)%e->N) + (int) pow (2, i);
+
+			e->c[0][0] -= 1;
+		}
+
+		if ((e->b[i] == 0 && e->b[(i+1)%e->N] == 0) || 
+				(e->b[i] == 1 && e->b[(i+1)%e->N] == 1))
+			e->c[0][0] += 1;
+	}
+}
+
+// matrix elements of J -- the spin currrent
+void connect_J (pov * e, int x)
+{
+	int i;
+	for (i = 0; i <= e->N - 1; i++)
+	{
+		if (e->b[i] == 1 && e->b[(i+1)%e->N] == 0)
+		{
+			e->n++;
+			e->c[0] = (int *) realloc ((int *) e->c[0],
+					e->n * sizeof (int));
+			e->c[1] = (int *) realloc ((int *) e->c[1],
+					e->n * sizeof (int));
+
+			e->c[0][e->n-1] = -2;
+			e->c[1][e->n-1] = x - (int) pow (2, i) + (int) pow (2, (i+1)%e->N);
+		}
+
 		if (e->b[i] == 0 && e->b[(i+1)%e->N] == 1)
 		{
 			e->n++;
@@ -344,16 +392,19 @@ void controlH (hod * u)
 		for (j = 0; j <= u->e[i]->n-1; j++)
 			H[i][u->e[i]->c[1][j]] += u->e[i]->c[0][j];
 
-		printf ("|");
-		for (j = 0; j <= N-1; j++)
+		if (u->e[i]->N <= 5)
 		{
-			if (H[i][j] != 0)
-				printf ("% 3d", H[i][j]);
-			else
-				printf ("   ");
+			printf ("|");
+			for (j = 0; j <= N-1; j++)
+			{
+				if (H[i][j] != 0)
+					printf ("% 2d", H[i][j]);
+				else
+					printf ("  ");
+			}		
+			printf ("|\n");
 		}
 		
-		printf ("|\n");
 	}
 
 	for (i = 0; i <= N-1; i++)
@@ -363,11 +414,12 @@ void controlH (hod * u)
 	exit (EXIT_SUCCESS);
 }
 
-void init (hod * u, int N, int T, int E, int M, int s, int G, int c, double h, char * dat)
+void init (hod * u, int N, int T, int E, int J, int M, int s, int G, int c, double h, char * dat)
 {
 	u->N = pow(2,N);
 
 	u->E = E;
+	u->J = J;
 	u->T = T;
 	u->M = M;
 	u->s = s;
@@ -386,26 +438,29 @@ void init (hod * u, int N, int T, int E, int M, int s, int G, int c, double h, c
 	u->rand = gsl_rng_alloc (gsl_rng_taus);
 	gsl_rng_set (u->rand, 10248023);
 
-	int j,i;
+	int j;
 	u->g = (double complex **) malloc (u->G * sizeof (double complex *));
 	for (j = 0; j <= u->G-1; j++)
 		init_vec (u, j);
 
-	u->e = NULL;
-	if (u->E || u->c)
+	u->connect = &connect_Id;
+	if (u->E)
+		u->connect = &connect_E;
+	
+	if (u->J)
+		u->connect = &connect_J;
+
+	u->e = (pov **) malloc (u->N * sizeof (pov *));
+	for (j = 0; j <= u->N-1; j++)
 	{
-		u->e = (pov **) malloc (u->N * sizeof (pov *));
-
-		for (i = 0; i <= u->N-1; i++)
-		{
-			u->e[i] = (pov *) malloc (sizeof (pov));
-			init_e (u->e[i], N);
-			connect_e  (u->e[i], i);
-		}
-
-		if (u->c == 1)
-			controlH(u);
+		u->e[j] = (pov *) malloc (sizeof (pov));
+		init_e (u->e[j], N);
+		binary (u->e[j], j);
+		u->connect (u->e[j], j);
 	}
+
+	if (u->c)
+		controlH (u);
 }
 
 void destroy (hod * u)

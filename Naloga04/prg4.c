@@ -20,13 +20,14 @@ int main (int argc, char ** argv)
 	    s = 4,
 	    G = 10,
 	    E = 0,
+	    J = 0,
 	    y = 0,
 	    c = 0,
 	    arg;
 
 	opterr = 1;
 
-	while ((arg = getopt (argc, argv, "o:h:N:M:s:G:tElc")) != -1)
+	while ((arg = getopt (argc, argv, "o:h:N:M:s:G:tEJlc")) != -1)
 	{
 		switch (arg)
 		{
@@ -44,6 +45,9 @@ int main (int argc, char ** argv)
 				break;
 			case 'E':
 				E = 1;
+				break;
+			case 'J':
+				J = 1;
 				break;
 			case 'M':
 				M = atoi (optarg);
@@ -63,10 +67,11 @@ int main (int argc, char ** argv)
 			case 'l':
 				printf ("List of commands:\n==========================\n");
 				printf ("-l -- prints this list\n");
-				printf ("-c -- print Hamiltonian\n");
+				printf ("-c -- print the connection matrix\n");
 				printf ("-o -- name of the output file\n");
 				printf ("-y -- save output file\n");
 				printf ("-E -- calculate the average energy\n");
+				printf ("-J -- calculate the the spin current\n");
 				printf ("-h (0.01) set the integrator step\n");
 				printf ("-N (3) set the number of qubits\n");
 				printf ("-t (no) time flag\n");
@@ -94,7 +99,7 @@ int main (int argc, char ** argv)
 	sprintf (file, "%s.txt", dat);
 
 	hod * u = (hod *) malloc (sizeof (hod));
-	init (u, N, T, E, M, s, G, c, h, file);
+	init (u, N, T, E, J, M, s, G, c, h, file);
 
 	printf ("\nCalculating ...\n");
 	simple_propagate (u);
