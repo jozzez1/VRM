@@ -21,13 +21,14 @@ int main (int argc, char ** argv)
 	    G = 10,
 	    E = 0,
 	    J = 0,
+	    C = 0,
 	    y = 0,
 	    c = 0,
 	    arg;
 
 	opterr = 1;
 
-	while ((arg = getopt (argc, argv, "o:h:N:M:s:G:tEJlc")) != -1)
+	while ((arg = getopt (argc, argv, "o:h:N:M:s:G:CEJlc")) != -1)
 	{
 		switch (arg)
 		{
@@ -40,14 +41,16 @@ int main (int argc, char ** argv)
 			case 'N':
 				N = atoi (optarg);
 				break;
-			case 't':
-				T = 2;
+			case 'C':
+				C = 1;
+				T = 1;
 				break;
 			case 'E':
 				E = 1;
 				break;
 			case 'J':
 				J = 1;
+				T = 1;
 				break;
 			case 'M':
 				M = atoi (optarg);
@@ -71,10 +74,10 @@ int main (int argc, char ** argv)
 				printf ("-o -- name of the output file\n");
 				printf ("-y -- save output file\n");
 				printf ("-E -- calculate the average energy\n");
+				printf ("-C -- calculate the 1st spin\n");
 				printf ("-J -- calculate the the spin current\n");
 				printf ("-h (0.01) set the integrator step\n");
 				printf ("-N (3) set the number of qubits\n");
-				printf ("-t (no) time flag\n");
 				printf ("-M (100) max time iteration\n");
 				printf ("-s (4) integrator precision (type)\n");
 				printf ("-G (10) number of vector for averaging\n");
@@ -89,17 +92,20 @@ int main (int argc, char ** argv)
 	{
 		dat = (char *) malloc (30 * sizeof (char));
 
-		if (T == 0)
-			sprintf (dat, "zoft-G%d-N%d-E%d", G, N, E);
-
+		if (E == 1)
+			sprintf (dat, "E-G%d-N%d", G, N);
+		else if (C == 1)
+			sprintf (dat, "C-G%d-N%d", G, N);
+		else if (J == 1)
+			sprintf (dat, "J-G%d-N%d", G, N);
 		else
-			sprintf (dat, "corr-G%d-N%d-E%d", G, N, E);
+			sprintf (dat, "F-G%d-N%d", G, N);
 	}
 
 	sprintf (file, "%s.txt", dat);
 
 	hod * u = (hod *) malloc (sizeof (hod));
-	init (u, N, T, E, J, M, s, G, c, h, file);
+	init (u, N, T, E, C, J, M, s, G, c, h, file);
 
 	printf ("\nCalculating ...\n");
 	simple_propagate (u);
@@ -108,7 +114,7 @@ int main (int argc, char ** argv)
 	printf ("Done!\n");
 	printf ("Output written in %s.\n", file);
 	char * command = (char *) malloc (35 * sizeof (char));
-	sprintf (command, "./plot4.sh %s %d %d %d", dat, y, E + T, N);
+	sprintf (command, "./plot4.sh %s %d %d %d", dat, y, E || J || C, N);
 	system (command);
 
 	free (command);
