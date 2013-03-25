@@ -65,24 +65,40 @@ void Ireset (int * q)
 	q[3] = 0;
 }
 
+void Iforward (int * q)
+{
+	q[0]++;
+	q[1]++;
+	q[2]++;
+	q[3]++;
+}
+
 void locate (hod * u, int k)
 {
 	int i;
 	for (i = u->q[0]+1; i <= u->N-1; i++)
 	{
 		// fix it! -- u->e[i] != u->q[0] ... or something like this
-		if (!u->e[i]->b[k] && !u->e[i]->b[(k+1)%u->e[i]->N] && u->e[i]->x != u->q[0])
+		if (u->e[i]->b[k] == 0 && u->e[i]->b[(k+1)%u->e[i]->N] == 0 /*&& u->e[i]->x != u->q[0]*/)
 			u->q[0] = u->e[i]->x;
 
-		if (u->e[i]->b[k] && !u->e[i]->b[(k+1)%u->e[i]->N] && u->e[i]->x != u->q[1])
+		else if (u->e[i]->b[k] == 1 && u->e[i]->b[(k+1)%u->e[i]->N] == 0 /*&& u->e[i]->x != u->q[1]*/)
 			u->q[1] = u->e[i]->x;
 
-		if (!u->e[i]->b[k] && u->e[i]->b[(k+1)%u->e[i]->N] && u->e[i]->x != u->q[2])
+		else if (u->e[i]->b[k] == 0 && u->e[i]->b[(k+1)%u->e[i]->N] == 1 /*&& u->e[i]->x != u->q[2]*/)
 			u->q[2] = u->e[i]->x;
 
-		if (u->e[i]->b[k] && u->e[i]->b[(k+1)%u->e[i]->N] && u->e[i]->x != u->q[3])
+		else if (u->e[i]->b[k] == 1 && u->e[i]->b[(k+1)%u->e[i]->N] == 1 /*&& u->e[i]->x != u->q[3]*/)
 			u->q[3] = u->e[i]->x;
 	}
+
+	
+	printf ("\n");
+	printf ("%d\n", u->q[0]);
+	printf ("%d\n", u->q[1]);
+	printf ("%d\n", u->q[2]);
+	printf ("%d\n", u->q[3]);
+
 }
 
 // propagator U grabs on the i,i+1 component of the j-th vector
@@ -116,6 +132,8 @@ void even (hod * u, double complex a)
 			locate (u, 2*k);
 			for (j = 0; j <= u->G-1; j ++)
 				Utrans (u, a, j);
+
+			Iforward (u->q);
 		}
 	}
 }
@@ -133,6 +151,8 @@ void odd (hod * u, double complex a)
 			locate (u, 2*k+1);
 			for (j = 0; j <= u->G-1; j++)
 				Utrans (u, a, j);
+
+			Iforward (u->q);
 		}
 	}
 }
@@ -222,6 +242,7 @@ void binary (pov * e, int x)
 	int i;
 	e->c[0][0] = 0;
 	e->c[1][0] = x;
+	e->x = x;
 	for (i = 0; i <= e->N-1; i++)
 	{
 		e->b[i] = x%2;
@@ -230,8 +251,6 @@ void binary (pov * e, int x)
 		if (e->b[i] == 1)
 			e->m++;
 	}
-
-	e->x = x;
 }
 
 // identity connection
@@ -540,6 +559,8 @@ void init (hod * u, int N, int T, int E, int C, int J, int M, int s, int G, int 
 
 void destroy (hod * u)
 {
+	gsl_rng_free (u->rand);
+
 	int j;
 	for (j = 0; j <= u->G*(1 + u->T)-1; j++)
 		free (u->g[j]);
@@ -553,7 +574,7 @@ void destroy (hod * u)
 	}
 
 	free (u->g);
-	gsl_rng_free (u->rand);
+	free (u->q);
 	
 	fclose (u->fout);
 

@@ -28,7 +28,7 @@ int main (int argc, char ** argv)
 
 	opterr = 1;
 
-	while ((arg = getopt (argc, argv, "o:h:N:M:s:G:CEJlc")) != -1)
+	while ((arg = getopt (argc, argv, "o:h:N:M:s:G:CEJtlc")) != -1)
 	{
 		switch (arg)
 		{
@@ -50,6 +50,9 @@ int main (int argc, char ** argv)
 				break;
 			case 'J':
 				J = 1;
+				T = 1;
+				break;
+			case 't':
 				T = 1;
 				break;
 			case 'M':
@@ -76,6 +79,7 @@ int main (int argc, char ** argv)
 				printf ("-E -- calculate the average energy\n");
 				printf ("-C -- calculate the 1st spin\n");
 				printf ("-J -- calculate the the spin current\n");
+				printf ("-t -- test the vector norms");
 				printf ("-h (0.01) set the integrator step\n");
 				printf ("-N (3) set the number of qubits\n");
 				printf ("-M (100) max time iteration\n");
