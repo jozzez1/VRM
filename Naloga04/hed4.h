@@ -27,7 +27,7 @@ typedef struct
 // the walker struct
 typedef struct
 {
-	int * q,              // tepoprary index holder for propagator
+	int ** q,             // tepoprary index holder for propagator
 	    N,                // vector dimension
 	    T,                // temperature flag -- our time will be i/T
 	    M,                // maximum time iteration
@@ -57,102 +57,88 @@ typedef struct
 
 } hod;
 
-void Ireset (int * q)
+// start connections
+void init_q (hod * u)
 {
-	q[0] = -1;
-	q[1] = 0;
-	q[2] = 0;
-	q[3] = 0;
-}
+	int n = u->N/4;
+	u->q = (int **) malloc (n * sizeof (int *));
 
-void Iforward (int * q)
-{
-	q[0]++;
-	q[1]++;
-	q[2]++;
-	q[3]++;
-}
-
-void locate (hod * u, int k)
-{
 	int i;
-	for (i = u->q[0]+1; i <= u->N-1; i++)
+	for (i = 0; i <= n-1; i++)
 	{
-		// fix it! -- u->e[i] != u->q[0] ... or something like this
-		if (u->e[i]->b[k] == 0 && u->e[i]->b[(k+1)%u->e[i]->N] == 0 /*&& u->e[i]->x != u->q[0]*/)
-			u->q[0] = u->e[i]->x;
-
-		else if (u->e[i]->b[k] == 1 && u->e[i]->b[(k+1)%u->e[i]->N] == 0 /*&& u->e[i]->x != u->q[1]*/)
-			u->q[1] = u->e[i]->x;
-
-		else if (u->e[i]->b[k] == 0 && u->e[i]->b[(k+1)%u->e[i]->N] == 1 /*&& u->e[i]->x != u->q[2]*/)
-			u->q[2] = u->e[i]->x;
-
-		else if (u->e[i]->b[k] == 1 && u->e[i]->b[(k+1)%u->e[i]->N] == 1 /*&& u->e[i]->x != u->q[3]*/)
-			u->q[3] = u->e[i]->x;
+		u->q[i] = (int *) malloc (4 * sizeof (int));
+		int k;
+		for (k = 0; k <= 3; k++)
+			u->q[i][k] = k + 4*i;
 	}
+}
 
-	
-	printf ("\n");
-	printf ("%d\n", u->q[0]);
-	printf ("%d\n", u->q[1]);
-	printf ("%d\n", u->q[2]);
-	printf ("%d\n", u->q[3]);
+void destroy_q (hod * u)
+{
+	int n = u->N/4,
+	    i;
 
+	for (i = 0; i <= n-1; i++)
+		free (u->q[i]);
+	free (u->q);
 }
 
 // propagator U grabs on the i,i+1 component of the j-th vector
-void Utrans (hod * u, double complex a, int j)
+void Utrans (hod * u, double complex a, int j, int k, int shift)
 {
+	int I0 = (u->q[k][0] << shift) % (u->N - 1),
+	    I1 = (u->q[k][1] << shift) % (u->N - 1),
+	    I2 = (u->q[k][2] << shift) % (u->N - 1),
+	    I3 = (u->q[k][3] << shift) % (u->N - 1);
+
+	if (u->q[k][3] == u->N-1)
+		I3 = u->N-1;
+
 	double complex p  = (-1)*a*u->h,
-	               x1 = u->g[j][u->q[1]];
+	               x1 = u->g[j][I1];
 
 	// if we will use time
 	if (u->T)
 		p *= I;
 
 	// we take periodic boundaries 
-	u->g[j][u->q[0]]  *= cexp((-1)*p) * cexp(2*p);
-	u->g[j][u->q[3]] *= cexp ((-1)*p) * cexp (2*p);
+	u->g[j][I0]  *= cexp((-1)*p) * cexp(2*p);
+	u->g[j][I3] *= cexp ((-1)*p) * cexp (2*p);
 
-	u->g[j][u->q[1]] = cexp ((-1)*p) * (ccosh (2*p)*u->g[j][u->q[1]] + csinh (2*p)*u->g[j][u->q[2]]);
-	u->g[j][u->q[2]] = cexp ((-1)*p) * (ccosh (2*p)*u->g[j][u->q[2]] + csinh (2*p)*x1);
+	u->g[j][I1] = cexp ((-1)*p) * (ccosh (2*p)*u->g[j][I1] + csinh (2*p)*u->g[j][I2]);
+	u->g[j][I2] = cexp ((-1)*p) * (ccosh (2*p)*u->g[j][I2] + csinh (2*p)*x1);
 }
 
 void even (hod * u, double complex a)
 {
-	int n = u->e[0]->N/2,
-	    i, j, k;
+	int n = u->N/4,
+	    S = u->e[0]->N/2,
+	    G = u->G*(1 + u->T),
+	    shift, k, j;
 
 	for (k = 0; k <= n-1; k++)
 	{
-		Ireset (u->q);
-		for (i = 0; i <= u->N/4-1; i++)
+		for (shift = 0; shift <= S-1; shift++)
 		{
-			locate (u, 2*k);
-			for (j = 0; j <= u->G-1; j ++)
-				Utrans (u, a, j);
-
-			Iforward (u->q);
+			for (j = 0; j <= G-1; j++)
+				Utrans (u, a, j, k, 2*shift);
 		}
 	}
 }
 
 void odd (hod * u, double complex a)
 {
-	int n = u->e[0]->N/2,
-	    i, k, j;
+	int n = u->N/4,
+	    S = u->e[0]->N/2,
+	    G = u->G*(1 + u->T),
+	    shift, k, j;
 
-	for (k = 0; k <= n-1; k ++)
+	for (k = 0; k <= n-1; k++)
 	{
-		Ireset (u->q);
-		for (i = 0; i <= u->N/4-1; i++)
+		for (shift = 0; shift <= S-1; shift++)
 		{
-			locate (u, 2*k+1);
-			for (j = 0; j <= u->G-1; j++)
-				Utrans (u, a, j);
-
-			Iforward (u->q);
+			for (j = 0; j <= G-1; j++)
+				Utrans (u, a, j, k, 2*shift + 1);
 		}
 	}
 }
@@ -239,10 +225,11 @@ void UpdateF (hod * u)
 // takes care of diagonal connections
 void binary (pov * e, int x)
 {
-	int i;
 	e->c[0][0] = 0;
 	e->c[1][0] = x;
 	e->x = x;
+
+	int i;
 	for (i = 0; i <= e->N-1; i++)
 	{
 		e->b[i] = x%2;
@@ -307,6 +294,7 @@ void connect_J (pov * e, int x)
 	int i;
 	for (i = 0; i <= e->N - 1; i++)
 	{
+		// we find 01, (actually 10, but we have to reverse it)
 		if (e->b[i] == 1 && e->b[(i+1)%e->N] == 0)
 		{
 			e->n++;
@@ -319,6 +307,7 @@ void connect_J (pov * e, int x)
 			e->c[1][e->n-1] = x - (int) pow (2, i) + (int) pow (2, (i+1)%e->N);
 		}
 
+		// we find 10 (again, 01, but we have to reverse it)
 		if (e->b[i] == 0 && e->b[(i+1)%e->N] == 1)
 		{
 			e->n++;
@@ -379,7 +368,7 @@ void UpdateH (hod * u)
 				S += conj (u->g[j][i]) * u->e[i]->c[0][k] * u->g[j+u->T*u->G][u->e[i]->c[1][k]];
 
 			if (u->J)
-				S *= cpow (I, u->e[i]->n-1);
+				S *= cpow (I, u->e[i]->n);
 		}
 
 		u->H = u->H * (1 - 1.0/(j+1)) + S/(j+1);
@@ -486,7 +475,8 @@ void controlH (hod * u)
 	exit (EXIT_SUCCESS);
 }
 
-void init (hod * u, int N, int T, int E, int C, int J, int M, int s, int G, int c, double h, char * dat)
+void init (hod * u, int N, int T, int E, int C, int J,
+		int M, int s, int G, int c, double h, char * dat)
 {
 	u->N = pow(2,N);
 
@@ -509,12 +499,12 @@ void init (hod * u, int N, int T, int E, int C, int J, int M, int s, int G, int 
 	u->rand = gsl_rng_alloc (gsl_rng_taus);
 	gsl_rng_set (u->rand, 10248023);
 
+	init_q (u);
+
 	int j;
 	u->g = (double complex **) malloc (u->G * sizeof (double complex *));
 	for (j = 0; j <= u->G-1; j++)
 		init_vec (u, j);
-
-	u->q = (int *) malloc (4 * sizeof (int));
 
 	if (u->E) u->connect = &connect_E;
 	else if (u->C) u->connect = &connect_C;
@@ -564,6 +554,8 @@ void destroy (hod * u)
 	int j;
 	for (j = 0; j <= u->G*(1 + u->T)-1; j++)
 		free (u->g[j]);
+
+//	destroy_q (u);
 
 	if (u->E)
 	{
