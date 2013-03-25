@@ -17,7 +17,8 @@ typedef struct
 	    * b,        // number in binary
 	    N,          // total number of bits
 	    m,          // number of ones
-	    n;          // number of connections
+	    n,          // number of connections
+	    x;          // the actual integer in decimal
 
 	// c[0][j] -- connection factor,
 	// c[1][j] -- connects to, for j-th connection
@@ -26,7 +27,8 @@ typedef struct
 // the walker struct
 typedef struct
 {
-	int N,                // vector dimension
+	int * q,              // tepoprary index holder for propagator
+	    N,                // vector dimension
 	    T,                // temperature flag -- our time will be i/T
 	    M,                // maximum time iteration
 	    t,                // current integration index -- h*t = beta
@@ -52,64 +54,103 @@ typedef struct
 
 	double complex ** g,  // vector of state vectors
 	       H;             // Hamiltonian average energy/Spin current/1st spin in z
+
 } hod;
 
-// propagator U grabs on the i,i+1 component of the j-th vector
-void Utrans (hod * u, double complex a, int i, int j)
+void Ireset (int * q)
 {
-	int n = 2*i;
+	q[0] = -1;
+	q[1] = 0;
+	q[2] = 0;
+	q[3] = 0;
+}
 
+void locate (hod * u, int k)
+{
+	int i;
+	for (i = u->q[0]+1; i <= u->N-1; i++)
+	{
+		// fix it! -- u->e[i] != u->q[0] ... or something like this
+		if (!u->e[i]->b[k] && !u->e[i]->b[(k+1)%u->e[i]->N] && u->e[i]->x != u->q[0])
+			u->q[0] = u->e[i]->x;
+
+		if (u->e[i]->b[k] && !u->e[i]->b[(k+1)%u->e[i]->N] && u->e[i]->x != u->q[1])
+			u->q[1] = u->e[i]->x;
+
+		if (!u->e[i]->b[k] && u->e[i]->b[(k+1)%u->e[i]->N] && u->e[i]->x != u->q[2])
+			u->q[2] = u->e[i]->x;
+
+		if (u->e[i]->b[k] && u->e[i]->b[(k+1)%u->e[i]->N] && u->e[i]->x != u->q[3])
+			u->q[3] = u->e[i]->x;
+	}
+}
+
+// propagator U grabs on the i,i+1 component of the j-th vector
+void Utrans (hod * u, double complex a, int j)
+{
 	double complex p  = (-1)*a*u->h,
-	               x1 = u->g[j][n+1];
+	               x1 = u->g[j][u->q[1]];
 
 	// if we will use time
 	if (u->T)
 		p *= I;
 
 	// we take periodic boundaries 
-	u->g[j][n]  *= cexp((-1)*p) * cexp(2*p);
-	u->g[j][(n+3) % u->N] *= cexp ((-1)*p) * cexp (2*p);
+	u->g[j][u->q[0]]  *= cexp((-1)*p) * cexp(2*p);
+	u->g[j][u->q[3]] *= cexp ((-1)*p) * cexp (2*p);
 
-	u->g[j][n+1] = cexp ((-1)*p) * (ccosh (2*p)*u->g[j][n+1] + csinh (2*p)*u->g[j][(n+2)%u->N]);
-	u->g[j][(n+2)%u->N] = cexp ((-1)*p) * (ccosh (2*p)*u->g[j][(n+2)%u->N] + csinh (2*p)*x1);
+	u->g[j][u->q[1]] = cexp ((-1)*p) * (ccosh (2*p)*u->g[j][u->q[1]] + csinh (2*p)*u->g[j][u->q[2]]);
+	u->g[j][u->q[2]] = cexp ((-1)*p) * (ccosh (2*p)*u->g[j][u->q[2]] + csinh (2*p)*x1);
 }
 
-void even (hod * u, double complex a, int j)
+void even (hod * u, double complex a)
 {
-	int n = u->N/2,
-	    i;
+	int n = u->e[0]->N/2,
+	    i, j, k;
 
-	for (i = 0; i <= n-1; i += 2)
-		Utrans (u, a, i, j);
+	for (k = 0; k <= n-1; k++)
+	{
+		Ireset (u->q);
+		for (i = 0; i <= u->N/4-1; i++)
+		{
+			locate (u, 2*k);
+			for (j = 0; j <= u->G-1; j ++)
+				Utrans (u, a, j);
+		}
+	}
 }
 
-void odd (hod * u, double complex a, int j)
+void odd (hod * u, double complex a)
 {
-	int n = u->N/2,
-	    i;
+	int n = u->e[0]->N/2,
+	    i, k, j;
 
-	for (i = 1; i <= n-1; i += 2)
-		Utrans (u, a, i, j);
+	for (k = 0; k <= n-1; k ++)
+	{
+		Ireset (u->q);
+		for (i = 0; i <= u->N/4-1; i++)
+		{
+			locate (u, 2*k+1);
+			for (j = 0; j <= u->G-1; j++)
+				Utrans (u, a, j);
+		}
+	}
 }
 
 void Asym (void * u)
 {
-	int j;
-	for (j = 0; j <= ((hod *)u)->G-1; j++)
-	{
-		even ((hod *) u, 1.0 + 0.0*I, j);
-		odd ((hod *) u, 1.0 + 0.0*I, j);
-	}
+	even ((hod *) u, 1.0 + 0.0*I);
+	odd ((hod *) u, 1.0 + 0.0*I);
 }
 
-void S2doer (hod * u, double a, int j)
+void S2doer (hod * u, double a)
 {
-	even (u, a*0.5 + 0.0*I, j);
-	odd (u, a*1.0 + 0.0*I, j);
-	even (u, a*0.5 + 0.0*I, j);
+	even (u, a*0.5 + 0.0*I);
+	odd (u, a*1.0 + 0.0*I);
+	even (u, a*0.5 + 0.0*I);
 }
 
-void S3doer (hod * u, int con, double a, int j)
+void S3doer (hod * u, int con, double a)
 {
 	double complex p1 = 0.125*(1 + sqrt(1.0/3)*I),
 	       p5 = conj (p1),
@@ -125,35 +166,31 @@ void S3doer (hod * u, int con, double a, int j)
 
 	if (con == 0)
 	{
-		even (u, p1, j);
-		odd (u, p2, j);
-		even (u, p3, j);
-		odd (u, p4, j);
-		even (u, p5, j);
+		even (u, p1);
+		odd (u, p2);
+		even (u, p3);
+		odd (u, p4);
+		even (u, p5);
 	}
 
 	else if (con == 1)
 	{
-		even (u, p5, j);
-		odd (u, p4, j);
-		even (u, p3, j);
-		odd (u, p2, j);
-		even (u, p1, j);
+		even (u, p5);
+		odd (u, p4);
+		even (u, p3);
+		odd (u, p2);
+		even (u, p1);
 	}
 }
 
 void S2 (void * u)
 {
-	int j;
-	for (j = 0; j <= ((hod *) u)->G-1; j++)
-		S2doer ((hod *) u, 1, j);
+	S2doer ((hod *) u, 1);
 }
 
 void S3 (void * u)
 {
-	int j;
-	for (j = 0; j <= ((hod *) u)->G-1; j++)
-		S3doer ((hod *) u, 0, 2, j); // used to be u,0,1,j
+	S3doer ((hod *) u, 0, 2); // used to be u,0,1
 }
 
 void S4 (void * u)
@@ -162,24 +199,16 @@ void S4 (void * u)
 	       x0 = (-1)*f/(2 - f),
 	       x1 = 1.0/(2 - f);
 
-	int j;
-	for (j = 0; j <= ((hod *) u)->G-1; j++)
-	{
-		S2doer ((hod *) u, x1, j);
-		S2doer ((hod *) u, x0, j);
-		S2doer ((hod *) u, x1, j);
-	}
+	S2doer ((hod *) u, x1);
+	S2doer ((hod *) u, x0);
+	S2doer ((hod *) u, x1);
 }
 
 void S5 (void * u)
 {
-	int j;
-	for (j = 0; j <= ((hod *) u)->G-1; j++)
-	{
 		                     // fixed for correct time
-		S3doer ((hod *) u, 0, 1, j); // used to be u,0,0.5,j
-		S3doer ((hod *) u, 1, 1, j); // used to be u,1,0.5,j
-	}
+	S3doer ((hod *) u, 0, 1); // used to be u,0,0.5,j
+	S3doer ((hod *) u, 1, 1); // used to be u,1,0.5,j
 }
 
 void UpdateF (hod * u)
@@ -201,6 +230,8 @@ void binary (pov * e, int x)
 		if (e->b[i] == 1)
 			e->m++;
 	}
+
+	e->x = x;
 }
 
 // identity connection
@@ -464,6 +495,8 @@ void init (hod * u, int N, int T, int E, int C, int J, int M, int s, int G, int 
 	for (j = 0; j <= u->G-1; j++)
 		init_vec (u, j);
 
+	u->q = (int *) malloc (4 * sizeof (int));
+
 	if (u->E) u->connect = &connect_E;
 	else if (u->C) u->connect = &connect_C;
 	else if (u->J) u->connect = &connect_J;
@@ -502,8 +535,7 @@ void init (hod * u, int N, int T, int E, int C, int J, int M, int s, int G, int 
 	}
 
 	if (u->T) spin_corr_init_vec (u);
-	if (u->c)
-		controlH (u);
+	if (u->c) controlH (u);
 }
 
 void destroy (hod * u)
