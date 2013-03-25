@@ -63,7 +63,7 @@ void Utrans (hod * u, double complex a, int i, int j)
 	               x1 = u->g[j][n+1];
 
 	// if we will use time
-	if (u->T == 2)
+	if (u->T)
 		p *= I;
 
 	// we take periodic boundaries 
@@ -328,7 +328,7 @@ void UpdateH (hod * u)
 			for (k = 0; k <= u->e[i]->n-1; k++)
 				S += conj (u->g[j][i]) * u->e[i]->c[0][k] * u->g[j+u->T*u->G][u->e[i]->c[1][k]];
 
-			if (u->T)
+			if (u->J)
 				S *= cpow (I, u->e[i]->n-1);
 		}
 
