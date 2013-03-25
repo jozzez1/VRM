@@ -1,10 +1,11 @@
-#!/bin/bash
+#!/bin/zsh
 
 DAT=$1
 SAVE=$2
 MODE=$3
 NUM=$4
 
+# plot the F(beta)
 if [ ${MODE} -eq 0 ]; then
 
 	echo "reset;
@@ -67,16 +68,7 @@ elif [ ${MODE} -eq 1 ]; then
 	set label \"N = $NUM\" at screen 0.72,0.3;
 	set log y2;
 	plot \"$DAT.txt\" u 1:4 w l title 'Re (E)' axes x1y1;
-	replot \"$DAT.txt\" u 1:5 w l lt 3 title 'Im (E)' axes x1y2" | gnuplot -p
-
-elif [ ${MODE} -gt 1 ]; then
-
-	echo "reset;
-	set ylabel 'C';
-	set xlabel 't';
-	set label \"N = $NUM\" at screen 0.72,0.3;
-	plot \"$DAT.txt\" u 1:2 w l title 'Re (C)';
-	replot \"$DAT.txt\" u 1:3 w l lt 3 title 'Im (C)'" | gnuplot -p
+	replot \"$DAT.txt\" u 1:2 w l lt 3 title 'Z' axes x1y2" | gnuplot -p
 
 fi
 
