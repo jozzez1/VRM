@@ -11,17 +11,20 @@ function write ()
 	dat=$1
 	report=$2
 
-	echo >> $report
-	echo >> $report
-	echo '\begin{figure}[H]'               >> $report
-	echo '   \begin{center}'               >> $report
-	echo '      \input{'"$dat.tex"'}'      >> $report
-	echo '   \end{center}'                 >> $report
-	echo '   \vspace{-20pt}'               >> $report
-	echo '   \caption{Some caption ...}'   >> $report
-	echo '   \label{fig:pic}'              >> $report
-	echo '   \vspace{-10pt}'               >> $report
-	echo '\end{figure}'                    >> $report
+	# we don't want to change this all the time ...
+	sed -i '/\end{document}/d' $report
+
+	echo -E '\begin{figure}[H]'               >> $report
+	echo -E '   \begin{center}'               >> $report
+	echo -E '      \input{'"$dat.tex"'}'      >> $report
+	echo -E '   \end{center}'                 >> $report
+	echo -E '   \vspace{-20pt}'               >> $report
+	echo -E '   \caption{Some caption ...}'   >> $report
+	echo -E '   \label{fig:pic}'              >> $report
+	echo -E '   \vspace{-10pt}'               >> $report
+	echo -E '\end{figure}'                    >> $report
+	echo                                      >> $report
+	echo -E '\end{document}'                  >> $report
 	echo >> $report
 }
 
@@ -44,7 +47,7 @@ function plot ()
 
 	if [ ${mode} -eq 0 ]
 	then
-		xaxis='$\\beta$'
+		xaxis='$\beta$'
 		yaxis='$F$'
 		y2axis='$Z$'
 	elif [ ${mode} -eq 1 ]
@@ -83,18 +86,18 @@ function plot ()
 		echo "set y2labe '$y2axis'" >> $temp
 	fi
 
-	echo "set xlabel '$xaxis'"  >> $temp
-	echo "set ylabel '$yaxis'"  >> $temp
-	echo "set label '"'$N = '"$num"'$'"' at screen 0.72,0.3" >> $temp
+	echo -E "set xlabel '$xaxis'"  >> $temp
+	echo -E "set ylabel '$yaxis'"  >> $temp
+	echo -E "set label '"'$N = '"$num"'$'"' at screen 0.72,0.3" >> $temp
 
 	# here comes the plotting part
 	echo >> $temp
 	if [ ${mode} -eq 0 ]; then
-		echo "plot \"$dat.txt\" u 1:3 w l title '$yaxis' axes x1y1, \\" >> $temp
-		echo "\"$dat.txt\" u 1:2 w l lt 3 title '$y2axis' axes x1y2"    >> $temp
+		echo -E "plot \"$dat.txt\" u 1:3 w l title '$yaxis' axes x1y1, \\" >> $temp
+		echo -E "\"$dat.txt\" u 1:2 w l lt 3 title '$y2axis' axes x1y2"    >> $temp
 
 	else
-		echo "plot \"$dat.txt\" u 1:4 w l title '$yaxis'"               >> $temp
+		echo -E "plot \"$dat.txt\" u 1:4 w l title '$yaxis'"               >> $temp
 	fi
 
 	# we finish with the file ...
@@ -106,7 +109,7 @@ function plot ()
 
 plot 0 $MODE $DAT $NUM
 
-if [ ${SAVE} - eq 1 ]; then
+if [ ${SAVE} -eq 1 ]; then
 	plot $SAVE $MODE $DAT $NUM
 	epstopdf $DAT.eps
 	write $DAT joze_zobec_04.tex
