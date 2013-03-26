@@ -511,8 +511,8 @@ void init (hod * u, int N, int T, int E, int C, int J,
 
 	u->connect = &connect_Id;
 	if (u->E) u->connect = &connect_E;
-	if (u->C) u->connect = &connect_C;
-	if (u->J) u->connect = &connect_J;
+	else if (u->C) u->connect = &connect_C;
+	else if (u->J) u->connect = &connect_J;
 
 	// we select the stepper
 	switch (s)

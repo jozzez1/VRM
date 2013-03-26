@@ -117,9 +117,15 @@ int main (int argc, char ** argv)
 
 	printf ("Done!\n");
 	printf ("Output written in %s.\n", file);
+
+	int mode = 0;
+	if (E) mode = 1;
+	else if (C) mode = 2;
+	else if (J) mode = 3;
+
 	char * command = (char *) malloc (35 * sizeof (char));
-	sprintf (command, "./plot4.sh %s %d %d %d", dat, y, E || J || C, N);
-//	system (command);
+	sprintf (command, "./plot4.sh %s %d %d %d", dat, y, mode, N);
+	system (command);
 
 	free (command);
 	free (file);

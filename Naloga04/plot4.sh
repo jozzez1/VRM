@@ -85,7 +85,7 @@ function plot ()
 
 	echo "set xlabel '$xaxis'"  >> $temp
 	echo "set ylabel '$yaxis'"  >> $temp
-	echo "set label 'N = $num' at screen 0.72,0.3" >> $temp
+	echo "set label '"'$N = '"$num"'$'"' at screen 0.72,0.3" >> $temp
 
 	# here comes the plotting part
 	echo >> $temp
