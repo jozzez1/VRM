@@ -28,7 +28,7 @@ int main (int argc, char ** argv)
 
 	opterr = 1;
 
-	while ((arg = getopt (argc, argv, "o:h:N:M:s:G:CEJtlc")) != -1)
+	while ((arg = getopt (argc, argv, "o:h:N:M:s:G:CEJytlc")) != -1)
 	{
 		switch (arg)
 		{

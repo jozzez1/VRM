@@ -119,9 +119,10 @@ void even (hod * u, double complex a)
 	    G = u->G*(1 + u->T),
 	    shift, k, j;
 
-	for (k = 0; k <= n-1; k++)
+
+	for (shift = 0; shift <= S-1; shift++)
 	{
-		for (shift = 0; shift <= S-1; shift++)
+		for (k = 0; k <= n-1; k++)
 		{
 			for (j = 0; j <= G-1; j++)
 				Utrans (u, a, j, k, 2*shift);
