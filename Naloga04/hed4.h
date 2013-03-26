@@ -593,8 +593,15 @@ void dump (hod * u)
 	double dsec = difftime(now, u->current_time),
 	       left = (u->M - u->t) * dsec/u->t;
 
+	char s [3] = "min";
 	// we transform seconds to minutes
 	left /= 60;
+	if (left > 60)
+	{
+		left /= 60;
+		s[0] = 'h';
+		s[1] = '\0';
+	}
 	
 	// progress bar
 	int percent = 20*u->t/u->M,
@@ -606,7 +613,7 @@ void dump (hod * u)
 	printf (">");
 	for (; i<= 18; i++)
 		printf (" ");
-	printf ("] %.1lf min left", left); // we print out the time left
+	printf ("] %.1lf %s left", left, s); // we print out the time left
 	printf("\n\033[F\033[J");
 }
 

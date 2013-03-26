@@ -84,12 +84,15 @@ function plot ()
 		echo 'set y2tics'           >> $temp
 		echo 'set log y2'           >> $temp
 		echo "set y2labe '$y2axis'" >> $temp
+		echo -E "set label '"'$N = '"$num"'$'"' at screen 0.56,0.3" >> $temp
+
+	else
+		echo -E "set label '"'$N = '"$num"'$'"' at screen 0.72,0.3" >> $temp
 	fi
 
 	echo -E "set xlabel '$xaxis'"  >> $temp
 	echo -E "set ylabel '$yaxis'"  >> $temp
-	echo -E "set label '"'$N = '"$num"'$'"' at screen 0.72,0.3" >> $temp
-
+	
 	# here comes the plotting part
 	echo >> $temp
 	if [ ${mode} -eq 0 ]; then
@@ -107,7 +110,7 @@ function plot ()
 	cat $temp | gnuplot $pflag
 }
 
-if [ ${MODE} -ne 0 ]
+if [ ${MODE} -eq 1 ]
 then
 	plot 0 0 $DAT $NUM
 fi
@@ -119,7 +122,8 @@ if [ ${SAVE} -eq 1 ]; then
 	epstopdf $DAT.eps
 	write $DAT joze_zobec_04.tex
 
-	if [ ${MODE} -eq 0 ]; then
+	# we add the free energy, since we have that too
+	if [ ${MODE} -eq 1 ]; then
 		plot $SAVE 0 $MODE $DAT $NUM
 		epstopdf $DAT.eps
 		write $DAT joze_zobec_04.tex
