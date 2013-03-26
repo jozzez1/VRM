@@ -6,6 +6,7 @@
 
 #include <math.h>
 #include <complex.h>
+#include <time.h>
 #include <stdlib.h>
 #include <gsl/gsl_rng.h>
 #include <gsl/gsl_randist.h>
@@ -35,6 +36,8 @@ typedef struct
 	    C,                // time correlation of the first spin
 	    J,                // yes to spin current! :PPPP
 	    G;                // maximum number of vectors to be averaged
+
+	time_t current_time;  // exactly what it says
 
 	long int ** q,        // tepoprary index holder for propagator
 	         N;           // vector dimension
@@ -582,6 +585,16 @@ void dump (hod * u)
 		fprintf (u->fout, "% 15lf % 15e % 15e % 15e % 15e\n",
 				u->t*u->h, u->Z, u->F, creal (u->H), cimag (u->H));
 
+	// get current time
+	time_t now;
+	time (&now);
+
+	double dsec = difftime(now, u->current_time),
+	       left = (u->M - u->t) * dsec/u->t;
+
+	// we transform seconds to minutes
+	left /= 60;
+	
 	// progress bar
 	int percent = 20*u->t/u->M,
 	    i;
@@ -592,11 +605,13 @@ void dump (hod * u)
 	printf (">");
 	for (; i<= 18; i++)
 		printf (" ");
-	printf ("]\n\033[F\033[J");
+	printf ("] %.1lf min left", left); // we print out the time left
+	printf("\n\033[F\033[J");
 }
 
 void simple_propagate (hod * u)
 {
+	time (&u->current_time);
 	for (u->t = 0; u->t <= u->M-1; u->t++)
 	{
 		u->stepper (u);
