@@ -107,12 +107,23 @@ function plot ()
 	cat $temp | gnuplot $pflag
 }
 
+if [ ${MODE} -ne 0 ]
+then
+	plot 0 0 $DAT $NUM
+fi
+
 plot 0 $MODE $DAT $NUM
 
 if [ ${SAVE} -eq 1 ]; then
 	plot $SAVE $MODE $DAT $NUM
 	epstopdf $DAT.eps
 	write $DAT joze_zobec_04.tex
+
+	if [ ${MODE} -eq 0 ]; then
+		plot $SAVE 0 $MODE $DAT $NUM
+		epstopdf $DAT.eps
+		write $DAT joze_zobec_04.tex
+	fi
 fi
 
 exit 0
