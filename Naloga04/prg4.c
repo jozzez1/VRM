@@ -119,7 +119,7 @@ int main (int argc, char ** argv)
 	printf ("Output written in %s.\n", file);
 	char * command = (char *) malloc (35 * sizeof (char));
 	sprintf (command, "./plot4.sh %s %d %d %d", dat, y, E || J || C, N);
-	system (command);
+//	system (command);
 
 	free (command);
 	free (file);

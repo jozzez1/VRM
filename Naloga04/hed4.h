@@ -13,13 +13,13 @@
 // our "matrix" for matrix element calculation
 typedef struct
 {
-	int ** c,       // connections array
-	    * b,        // number in binary
+	int * b,        // number in binary
 	    N,          // total number of bits
 	    m,          // number of ones
 	    n,          // number of connections
 	    x;          // the actual integer in decimal
 
+	long int ** c;       // connections array
 	// c[0][j] -- connection factor,
 	// c[1][j] -- connects to, for j-th connection
 } pov;
@@ -27,9 +27,7 @@ typedef struct
 // the walker struct
 typedef struct
 {
-	int ** q,             // tepoprary index holder for propagator
-	    N,                // vector dimension
-	    T,                // temperature flag -- our time will be i/T
+	int T,                // temperature flag -- our time will be i/T
 	    M,                // maximum time iteration
 	    t,                // current integration index -- h*t = beta
 	    c,                // calculate-hamiltonian-flag
@@ -37,6 +35,9 @@ typedef struct
 	    C,                // time correlation of the first spin
 	    J,                // yes to spin current! :PPPP
 	    G;                // maximum number of vectors to be averaged
+
+	long int ** q,        // tepoprary index holder for propagator
+	         N;           // vector dimension
 
 	gsl_rng * rand;       // random number generator
 
@@ -53,23 +54,22 @@ typedef struct
 	pov ** e;             // vector of state vecor connections
 
 	double complex ** g,  // vector of state vectors
-	       H;             // Hamiltonian average energy/Spin current/1st spin in z
-
+	                  H;  // Hamiltonian average energy/Spin current/1st spin in z
 } hod;
 
 // start connections
 void init_q (hod * u)
 {
-	int n = u->N/4;
-	u->q = (int **) malloc (n * sizeof (int *));
+	long int n = u->N/4;
+	u->q = (long int **) malloc (n * sizeof (long int *));
 
-	int i;
-	for (i = 0; i <= n-1; i++)
+	int k;
+	for (k = 0; k <= n-1; k++)
 	{
-		u->q[i] = (int *) malloc (4 * sizeof (int));
-		int k;
-		for (k = 0; k <= 3; k++)
-			u->q[i][k] = k + 4*i;
+		u->q[k] = (long int *) malloc (4 * sizeof (long int));
+		int i;
+		for (i = 0; i <= 3; i++)
+			u->q[k][i] = i + 4*k;
 	}
 }
 
@@ -86,10 +86,10 @@ void destroy_q (hod * u)
 // propagator U grabs on the i,i+1 component of the j-th vector
 void Utrans (hod * u, double complex a, int j, int k, int shift)
 {
-	int I0 = (u->q[k][0] << shift) % (u->N - 1),
-	    I1 = (u->q[k][1] << shift) % (u->N - 1),
-	    I2 = (u->q[k][2] << shift) % (u->N - 1),
-	    I3 = (u->q[k][3] << shift) % (u->N - 1);
+	long int I0 = (u->q[k][0] << shift) % (u->N - 1),
+    	         I1 = (u->q[k][1] << shift) % (u->N - 1),
+	         I2 = (u->q[k][2] << shift) % (u->N - 1),
+	         I3 = (u->q[k][3] << shift) % (u->N - 1);
 
 	if (u->q[k][3] == u->N-1)
 		I3 = u->N-1;
@@ -256,13 +256,13 @@ void connect_E (pov * e, int x)
 		if (e->b[i] == 1 && e->b[(i+1)%e->N] == 0)
 		{
 			e->n++;
-			e->c[0] = (int *) realloc ((int *) e->c[0],
-					e->n * sizeof (int));
-			e->c[1] = (int *) realloc ((int *) e->c[1],
-					e->n * sizeof (int));
+			e->c[0] = (long int *) realloc ((long int *) e->c[0],
+					e->n * sizeof (long int));
+			e->c[1] = (long int *) realloc ((long int *) e->c[1],
+					e->n * sizeof (long int));
 
 			e->c[0][e->n-1] = 2;
-			e->c[1][e->n-1] = x - (int) pow (2, i) + (int) pow (2, (i+1)%e->N);
+			e->c[1][e->n-1] = x - (long int) pow (2, i) + (long int) pow (2, (i+1)%e->N);
 
 			e->c[0][0] -= 1;
 		}
@@ -271,13 +271,13 @@ void connect_E (pov * e, int x)
 		if (e->b[i] == 0 && e->b[(i+1)%e->N] == 1)
 		{
 			e->n++;
-			e->c[0] = (int *) realloc ((int *) e->c[0],
-					e->n * sizeof (int));
-			e->c[1] = (int *) realloc ((int *) e->c[1],
-					e->n * sizeof (int));
+			e->c[0] = (long int *) realloc ((long int *) e->c[0],
+					e->n * sizeof (long int));
+			e->c[1] = (long int *) realloc ((long int *) e->c[1],
+					e->n * sizeof (long int));
 
 			e->c[0][e->n-1] = 2;
-			e->c[1][e->n-1] = x - (int) pow (2, (i+1)%e->N) + (int) pow (2, i);
+			e->c[1][e->n-1] = x - (long int) pow (2, (i+1)%e->N) + (long int) pow (2, i);
 
 			e->c[0][0] -= 1;
 		}
@@ -298,26 +298,26 @@ void connect_J (pov * e, int x)
 		if (e->b[i] == 1 && e->b[(i+1)%e->N] == 0)
 		{
 			e->n++;
-			e->c[0] = (int *) realloc ((int *) e->c[0],
-					e->n * sizeof (int));
-			e->c[1] = (int *) realloc ((int *) e->c[1],
-					e->n * sizeof (int));
+			e->c[0] = (long int *) realloc ((long int *) e->c[0],
+					e->n * sizeof (long int));
+			e->c[1] = (long int *) realloc ((long int *) e->c[1],
+					e->n * sizeof (long int));
 
-			e->c[0][e->n-1] = -2;
-			e->c[1][e->n-1] = x - (int) pow (2, i) + (int) pow (2, (i+1)%e->N);
+			e->c[0][e->n-1] = 2;
+			e->c[1][e->n-1] = x - (long int) pow (2, i) + (long int) pow (2, (i+1)%e->N);
 		}
 
-		// we find 10 (again, 01, but we have to reverse it)
+		// we find 10 (again, we actually look for 01, but we have to reverse it)
 		if (e->b[i] == 0 && e->b[(i+1)%e->N] == 1)
 		{
 			e->n++;
-			e->c[0] = (int *) realloc ((int *) e->c[0],
-					e->n * sizeof (int));
-			e->c[1] = (int *) realloc ((int *) e->c[1],
-					e->n * sizeof (int));
+			e->c[0] = (long int *) realloc ((long int *) e->c[0],
+					e->n * sizeof (long int));
+			e->c[1] = (long int *) realloc ((long int *) e->c[1],
+					e->n * sizeof (long int));
 
-			e->c[0][e->n-1] = 2;
-			e->c[1][e->n-1] = x - (int) pow (2, (i+1)%e->N) + (int) pow (2, i);
+			e->c[0][e->n-1] = -2;
+			e->c[1][e->n-1] = x - (long int) pow (2, (i+1)%e->N) + (long int) pow (2, i);
 		}
 	}
 }
@@ -339,10 +339,10 @@ void init_e (pov * e, int N)
 
 	e->b = (int *) malloc (e->N * sizeof (int));
 
-	e->c = (int **) malloc (2 * sizeof (int *));
+	e->c = (long int **) malloc (2 * sizeof (long int *));
 	
-	e->c[0] = (int *) malloc (sizeof (int));
-	e->c[1] = (int *) malloc (sizeof (int));
+	e->c[0] = (long int *) malloc (sizeof (long int));
+	e->c[1] = (long int *) malloc (sizeof (long int));
 }
 
 void destroy_e (pov * e)
@@ -368,7 +368,7 @@ void UpdateH (hod * u)
 				S += conj (u->g[j][i]) * u->e[i]->c[0][k] * u->g[j+u->T*u->G][u->e[i]->c[1][k]];
 
 			if (u->J)
-				S *= cpow (I, u->e[i]->n);
+				S *= cpow (I, u->e[i]->n - 1);
 		}
 
 		u->H = u->H * (1 - 1.0/(j+1)) + S/(j+1);
@@ -506,10 +506,10 @@ void init (hod * u, int N, int T, int E, int C, int J,
 	for (j = 0; j <= u->G-1; j++)
 		init_vec (u, j);
 
+	u->connect = &connect_Id;
 	if (u->E) u->connect = &connect_E;
-	else if (u->C) u->connect = &connect_C;
-	else if (u->J) u->connect = &connect_J;
-	else u->connect = &connect_Id;
+	if (u->C) u->connect = &connect_C;
+	if (u->J) u->connect = &connect_J;
 
 	// we select the stepper
 	switch (s)

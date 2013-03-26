@@ -5,3 +5,6 @@ SOURCE=prg4.c
 
 all:
 	$(CC) -o $(PRGNAM) $(SOURCE) $(CFLAGS)
+
+dbg:
+	$(CC) -o $(PRGNAM) $(SOURCE) $(CFLAGS) -g
