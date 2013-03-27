@@ -4,7 +4,7 @@
 \usepackage[T1]{fontenc}
 \usepackage[small, width=0.8\textwidth]{caption}
 \usepackage[pdftex]{graphicx}
-\usepackage{amssymb, amsmath, fullpage, float, hyperref, stackrel}
+\usepackage{amssymb, amsmath, mathtools, fullpage, float, hyperref, stackrel}
 
 \begin{document}
 
@@ -56,7 +56,49 @@ je $z$ čisto imaginarno število za čas in čisto realno število za temperatu
 	|\psi(t)\rangle = \e^{-itH}, \qquad |\psi(-i\beta)\rangle = \e^{-\beta H}.
 \]
 
-\subsection{Hamiltonian}
+\section{Optimizacija propagatorja}
+
+Naš propagator smo razbili na sode in na lihe. To pomeni da najprej po enačbi
+\eqref{eqn:U} delujemo na stanja\footnote{delamo v bazi $\sigma_j^z$, $0$
+pomeni spin "`dol"', $1$ pa pomeni spin "`gor"'}.
+
+\begin{align*}
+	&|s_N s_{N-1} \ldots s_3 \overbracket[0.5pt][5pt]{0\ 0}\rangle, \\
+	&|s_N s_{N-1} \ldots s_3\ 0\ 1\rangle, \\
+	&|s_N s_{N-1} \ldots s_3\ 1\ 0\rangle, \\
+	&|s_N s_{N-1} \ldots s_3\ 1\ 1\rangle.
+\end{align*}
+
+Če je takih četvorčkov več, vedno delujemo na vsakega le enkrat. Potem se moramo premakniti na drug tak
+blok četvorčkov, $s_4,s_3$:
+
+\begin{align*}
+	&|s_N s_{N-1} \ldots \overbracket[0.5pt][5pt]{0\ 0}s_2 s_1\rangle, \\
+	&|s_N s_{N-1} \ldots 0\ 1\ s_2 s_1\rangle, \\
+	&|s_N s_{N-1} \ldots 1\ 0\ s_2 s_1\rangle, \\
+	&|s_N s_{N-1} \ldots 1\ 1\ s_2 s_1\rangle.
+\end{align*}
+
+Iskanje ustreznih četvorčkov za biti časovno zahteven posel in nam lahko oteži že tako časovno zahteven
+izračun, saj ne vemo, kako so tile četvorčki urejeni v decimalnem zapisu. Izkaže se, da
+lahko iz prvega bloka, četvorkčkov, ki so VEDNO urejeni že v decimalnem (tj. lahko
+zapišemo njihove indekse kar kot \{{\tt [1, 2, 3, 4]}, {\tt [5, 6, 7, 8], \ldots}\}), pridemo v poljuben blok
+z ustreznim zamikom bitov (seveda z ustreznimi periodičnimi pogoji, za katere poskrbi modulo po največjem možnem indeksu za dano dolžino verige). Če želimo
+iz prvega sodega bloka priti na $n$-ti sodi blok, potem bite zamaknemo za $2n$ v levo. Če želimo iz sodega
+priti v $n$-ti lihi blok, potem bite zamaknemo za $2n - 1$ v levo. Modulo že sam po sebi poskrbi za naše
+periodične robne pogoje.
+
+Zamikanje bitov je zelo hitra operacija, tako to delovanja našega programa močno zmanjša, prav tako pa nam
+ni treba računati lihih in sodih posebej.
+
+Zamik bitov z $n$ v levo števila $x$ je ekvivalentno $x \leftarrow x\cdot2^n$ (mod $x_\text{max}$), vendar je čisti
+zamik hitrejši, tako da priporočam tega, če ga programsko okolje dopušča, saj
+je ta že vgrajen v samo elektroniko naših procesorjev.
+
+\section{Optimizacija hamiltoniana}
+
+Stanja bom od sedaj številčil tako kot v programu, tj. namesto od $1\ldots N$,
+raje od $0 \ldots N-1$.
 
 Propagator smo dobili tako, da smo Hamiltonian razcepili na operatorja $A$ in $B$, eden delce "`prime"' na sodih,
 drugi pa na lihih mestih. Če to matriko zapišemo zgolj za dvodelčno stanje, lahko hamiltonian zapišemo s pomočjo
@@ -122,113 +164,152 @@ komponente pa ima prikladno urejene. Naš hamiltonian je simetričen preko diago
 vendar pa je simetričen tudi preko diagonale $H_{0N} - H_{N0}$, kar pomeni, da lahko število ničel in
 enic v stanju zamenjamo in bo matrični element isti.
 
-Če delujemo z operatorjem na enotski vektor v tem prostoru, ki ga bom zaenkrat označil s $\psi\rangle$,
-dobimo
+Kakorkoli že, če naše indekse prepišemo v binarno, opazimo, da je hamiltonian odvisen le od indeksa našega
+stanja, saj denimo $|000\ldots0\rangle$ vedno stoji na prvem mestu, ne glede na dimenzijo. Prav tako
+stanje $|000\ldots01\rangle$ ipd. Hamiltonska matrika je razpršena in za $N = 20$ je ogromna ter dejansko
+lahko zasede gigabajte našega pomnilnika, s selektivnim postopkom pretvorbe v binarno, pa lahko v nekaj
+sekundah izluščimo neničelne elemente in potem množimo le z njimi in tako prihranimo na času.
 
-\[
-	H|\psi\rangle = \sum_{j=0}^{N-1} \big(2\sigma_j^+\sigma_{j+1}^- + \sigma^z_j\sigma^z_{j+1} + \text{h.c.}\big)
-		|\overbrace{00\ldots0}^{n}\overbrace{11\ldots1}^{m}\rangle,
-\]
+\section{Rezultati}
 
-kaj potem pravzaprav dobimo?
-
-Poiščimo najprej diagonalni del, saj je ta lažji. Zaradi simetrije na zamenjavo $0 \leftrightarrow 1$ mora izraz imeti
-isto lastnost in ni važno, če so ničle in enice v stanju premešane. Izkaže se, da za $m,n \geq 2$ velja
-
-\[
-	H^z|\psi\rangle = \sum_{j=0}^{N-1}\sigma^z_j\sigma^z_{j+1}|\overbrace{0\ldots0}^n \overbrace{1\ldots1}^m\rangle = \bigg[\binom{n}{2} + \binom{m}{2} - mn\bigg]|\psi\rangle,
-\]
-
-kjer je
-
-\[
-	\binom{n}{k} = \frac{n!}{k!(n-k)!},
-\]
-
-nam vsem dobro znani binomski simbol. Izvendiagonalne elemente je poiskati dosti težje, saj bomo dobili mešanje
-z večimi komponentami vektorjev.
-
-Če imamo neko enotsko stanje $\psi\rangle$, ga lahko v naši bazi zapišemo kot
-
-\[
-	|\psi\rangle = |\overset{0}{\underset{n-1}{s_0}}\ \overset{1}{\underset{n-2}{s_1}}\ldots
-		\overset{n-1-j}{\underset{j}{s_{n-1-j}}}\ldots\overset{n-1}{\underset{0}{s_{n-1}}}\rangle,
-\]
-
-zgornja številka pomeni kje smo, če štejemo stanje kubita, druga pa pač na katerem, "`bitu"' smo v vektorju stanj.
-
-Ko na ta enotski vektor delujemo z izvendiagonalnim delom hamiltoniana dobimo (h.c. člen bomo upoštevali pozneje)
-
-\[
-	H^\pm|\psi\rangle = 2\sum_{j=0}^{N-1}(\sigma^+_j\sigma^-_{j+1})
-		|0\ldots0\stackrel{j}{1}0\ldots0\rangle = 2|0\ldots0\stackrel{j+1}{1}0\ldots0\rangle,
-\]
-
-če je ta $|\psi\rangle$ ponazarjal enotski vektor $k$-te komponente, potem ga ta operator poveže s
-`$k + 2^{n-1-j}$'-to komponento.
-
-To je bil trivialen primer, ko se je to zgodilo enkrat, sicer pa moramo to storiti tolikokrat, kolikokrat se
-pojavi par $01$. Števili stanji $0$ in $1$ morata biti sosednji upoštevaje robni pogoj.
-Zaradi hermitsko konjugiranega člena bo ista povezava veljala
-tudi nazaj, tj.
-$k + 2^{n-1-j}$-ti člen bo povezan s $k$-tim, zaradi simetrije skozi drugo diagonalo, se bodo iste povezave
-veljale tudi za $k+N/2$-ti člen ter $k+N/2+2^{n-1-j}$-ti člen. Tako ne potrebujemo cele matrike, ampak samo
-povezave, kar bi moralo bistveno olajšati množenje s Hamiltonianom, ki je v bistvu razpršena matrika ranga
-$2^n$, z nekaj neničelnimi členi. Lahko sicer napovemo koliko jih je. Če je matrika ranga $N$, je št.
-neničelnih členov enako $M$,
-
-\[
-	M = 2 + \frac{}{}
-\]
-
-Za spinsko korelacijo $C(t)$ in korelacijo spinskega toka $C(t)_J$ imamo to smolo, da naš operator ne
-komutira s hamiltonianom, to pa pomeni, da ne komutira s propagatorjem, zaradi česar moramo poleg propagiranja
-$|\psi(0)\rangle$ propagirati skozi čas tudi $|\chi (0)\rangle = \sigma^z (0)|\psi (0)\rangle$. Še vedno
-lahko optimiziramo $\langle \psi(t)|\sigma^z(0)|\chi(t)\rangle$, ki je potem
-
-\[
-	\underline{x}^\dagger \sigma^z(0) \underline{y} = \sum_{j = 0}^{N/2 - 1} (x^*_{2j}y_{2j} -
-		x^*_{2j+1}y_{2j+1}),
-\]
-
-saj je spinski operator sila preprost. Isto bi radi storili še za $J_{j,j+1}$. Zapišimo ga v prikladnejšo obliko:
-
-\[
-	J_{j,j+1} = \sigma^x_j\sigma^y_{j+1} - \sigma^y_j\sigma^x_{j+1} =
-		2i(\sigma^+_j \sigma^-_{j+1} - \sigma^-_j\sigma^+_{j+1}).
-\]
-
-V bazi od prej, lahko analogno zapišemo matriko $J^{(2)}$ kot
-
-\[
-	J^{(2)} = -2\begin{bmatrix}
-		0 & 0 & 0 & 0 \\
-		0 & 0 & -i & 0 \\
-		0 & i & 0 & 0 \\
-		0 & 0 & 0 & 0
-		\end{bmatrix}.
-\]
+Dober pokazatelj, če naš integrator deluje pravilno, so grafi z energijo. Rezultati so konsistentni s pričakovanji.
 
 \begin{figure}[H]
    \begin{center}
-      \input{C-G3-N20.tex}
+      \input{FreeEn.tex}
    \end{center}
    \vspace{-20pt}
-   \caption{Some caption ...}
+   \caption{Prosta energija se pogljablja z večanjem $N$. Padec ni čisto potenčen, vendar sploh ni eksponenten.
+	Odvodi na začetku so napačni, vendar številka ni -- v ničli namreč še vedno dobimo pol, ki ga program vrne
+	pravilno. Če bi vzel krajši časovni korak, bi se to verjetno popravilo in rezultat ne bi bil dvomljiv
+	zaradi odvoda.}
    \label{fig:pic1}
    \vspace{-10pt}
 \end{figure}
 
+Iz slike~\ref{fig:pic1} sklepamo, da bo v termodinamski limiti prosta energija
+$F(\beta) \stackrel{\beta\to\infty}\longrightarrow - \infty$. Iz teh slik morda
+to ni tako očitno, vendar prosta energija tu limitira proti končni vrednosti
+za velike $\beta$.
 
 \begin{figure}[H]
    \begin{center}
-      \input{E-G1-N20.tex}
+      \input{Energy.tex}
    \end{center}
    \vspace{-20pt}
-   \caption{Some caption ...}
+   \caption{Energije osnovnih stanj za različne dolžine verig. Za $N = 2$ in $N = 4$ sem rešitev analitično primerjal
+	in pride prava vrednost, tj. $-6$ in $-8$. Za šalo sem poizkusil tudi s prej omenjeno verigo dolžine 3, katero
+	moramo obravnavati kot aperiodično, vendar tudi v tem primeru dobimo pravo energijo, to je $-3$.}
    \label{fig:pic2}
+\end{figure}
+
+Iz slike~\ref{fig:pic2} lahko sklepamo, da bo
+$\langle H\rangle_\beta \stackrel{\beta\to\infty}{\longrightarrow} -\infty$. To
+je anti-feromagnet, kar pomeni, da se bolj splača imeti čim bolj neurejeno
+kubitno verigo. Ker imamo v termodinamski limiti neskončno stanj, pomeni da
+moramo pričakovati tako energijo ter da je v bistvu tako obnašanje pričakovano.
+Lihe verige, kot prej omenjeni hamiltonian za verigo dolžine tri se obnašajo
+nekako čudno, vendar nisem šel preverjati energije takih verig.
+
+\pagebreak
+
+\subsection{Časovna korelacija}
+
+Avtokorelacijo prvega spina smo definirali kot $C(t) = \langle \sigma^z_1(t) \sigma^z_1 (0) \rangle$, delamo v limiti
+$\beta \to 0$, torej pri neskončni temperaturi, kar pomeni, da je imaginarna komponenta časa enaka 0.
+
+\begin{figure}[H]
+   \begin{center}
+      \input{C-G5-N20.tex}
+   \end{center}
+   \vspace{-20pt}
+   \caption{Korelacijska funkcija za 5 naključnih vektorjev. Naredil sem tudi z manjšo, vendar ni bilo razlike
+	zaradi česar sklepam, da že zelo malo stanj dobro opiše naš problem.}
+   \label{fig:pic}
    \vspace{-10pt}
 \end{figure}
+
+\begin{figure}[H]
+   \begin{center}
+      \input{C-G10-N16.tex}
+   \end{center}
+   \vspace{-20pt}
+   \caption{Korelacijska funkcija za kubitno verigo dolžine 16, z 10 naključnimi vektorji. Graf je identičen
+	tistemu, ki bi ga dobili s petimi in celo tremi naključnimi vektorji.}
+   \label{fig:pic}
+   \vspace{-10pt}
+\end{figure}
+
+\begin{figure}[H]
+   \begin{center}
+      \input{C-G5-N12.tex}
+   \end{center}
+   \vspace{-20pt}
+   \caption{Slika je spet praktično enaka, zaključek je malo dvignjen pri 
+	$t = 2$, kar nam namiguje, da se bližamo meji izven režima
+	termodinamske limite.}
+   \label{fig:pic}
+   \vspace{-10pt}
+\end{figure}
+
+\begin{figure}[H]
+   \begin{center}
+      \input{C-G5-N10.tex}
+   \end{center}
+   \vspace{-20pt}
+   \caption{Pred časom $t = 2$, ki je bil prej meja grafov, se korelacijska
+	funkcija prične dvigovati, kar pomeni da je čas za večjo sliko. Vidimo,
+	da imamo še vedno normalno avtokorelacijsko funkcijo.}
+   \label{fig:pic}
+   \vspace{-10pt}
+\end{figure}
+
+\begin{figure}[H]
+   \begin{center}
+      \input{C-G5-N8.tex}
+   \end{center}
+   \vspace{-20pt}
+   \caption{Graf je tu očitno drugačen od tistega, ko je $N = 10$.}
+   \label{fig:pic}
+   \vspace{-10pt}
+\end{figure}
+
+\begin{figure}[H]
+   \begin{center}
+      \input{C-G5-N6.tex}
+   \end{center}
+   \vspace{-20pt}
+   \caption{V tem primeru nimamo več dobre avtokorelacijske funkcije, saj
+	je naša končna veriga prekratka, da bi dobro simulirala neskončno.
+	Avtokorelacijska funkcija postane periodična.}
+   \label{fig:pic}
+   \vspace{-10pt}
+\end{figure}
+
+\begin{figure}[H]
+   \begin{center}
+      \input{C-G5-N4.tex}
+   \end{center}
+   \vspace{-20pt}
+   \caption{Periodičnost je tu še bolj očitna.}
+   \label{fig:pic}
+   \vspace{-10pt}
+\end{figure}
+
+\begin{figure}[H]
+   \begin{center}
+      \input{C-G5-N2.tex}
+   \end{center}
+   \vspace{-20pt}
+   \caption{Veriga dolžine 2 vsekakor ne more simulirati termodinamske limite. Kar dobimo
+	tu je za konstanto premaknjena čista kosinusna funkcija.}
+   \label{fig:pic}
+   \vspace{-10pt}
+\end{figure}
+
+Iz teh slik smo se naučili, da za smiseln statistični opis potrebujemo kubitno
+verigo zadostne dolžine (tj. za naš primer vsaj $N = 8$). Kako
+hitro korelacijska funkcija pada proti nič lahko določimo s fitanjem.
 
 \end{document}
 
