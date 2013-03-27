@@ -110,10 +110,10 @@ function plot ()
 	cat $temp | gnuplot $pflag
 }
 
-if [ ${MODE} -eq 1 ]
-then
-	plot 0 0 $DAT $NUM
-fi
+#if [ ${MODE} -eq 1 ]
+#then
+#	plot 0 0 $DAT $NUM
+#fi
 
 plot 0 $MODE $DAT $NUM
 
@@ -123,11 +123,11 @@ if [ ${SAVE} -eq 1 ]; then
 	write $DAT joze_zobec_04.tex
 
 	# we add the free energy, since we have that too
-	if [ ${MODE} -eq 1 ]; then
-		plot $SAVE 0 $MODE $DAT $NUM
-		epstopdf $DAT.eps
-		write $DAT joze_zobec_04.tex
-	fi
+#	if [ ${MODE} -eq 1 ]; then
+#		plot $SAVE 0 $MODE $DAT $NUM
+#		epstopdf $DAT.eps
+#		write $DAT joze_zobec_04.tex
+#	fi
 fi
 
 exit 0
