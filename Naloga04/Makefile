@@ -1,5 +1,5 @@
 CC=cc
-CFLAGS=-Wall -lm -lgsl -lgslcblas -O3
+CFLAGS=-Wall -lm -lgsl -lgslcblas -march=native -O3
 PRGNAM=nal4
 SOURCE=prg4.c
 
