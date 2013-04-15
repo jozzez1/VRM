@@ -315,13 +315,13 @@ void init (hod * u,
 	strcpy (u->baseJ, baseJ);
 
 	if (dump_switch == 0) u->dump = &final_dump;
-	if (dump_switch == 2) u->dump = &dump_animate;
-	if (dump_switch == 1)
+	if (dump_switch == 1) u->dump = &just_dump;
+	if (dump_switch == 2)
 	{
-		u->dump = &just_dump;
+		u->dump = &dump_animate;
 
-		mkdir (baseT, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
-		mkdir (baseJ, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+		mkdir (u->baseT, 0777);
+		mkdir (u->baseJ, 0777);
 	}
 
 

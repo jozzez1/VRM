@@ -8,3 +8,6 @@ all:
 
 dbg:
 	$(CC) -o $(PRGNAM) $(SOURCE) $(CFLAGS) -g
+
+clean:
+	rm -rf T* J* $(PRGNAM)*
