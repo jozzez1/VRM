@@ -8,6 +8,7 @@
 
 #include <string.h>
 #include <stdlib.h>
+#include <sys/stat.h>
 #include <math.h>
 
 typedef struct
@@ -15,6 +16,7 @@ typedef struct
 	int N,		// chain length
 	    n,		// vector length: 2N + 2
 	    t,		// current time index
+	    tdead,	// time we have to wait for the problem to relaxate a bit
 	    tmax;	// maximum allowed time index
 
 	char * baseT,	// file/directory basename for temperature
@@ -158,7 +160,7 @@ void adaptive_step_rk4 (hod * u)
 			step_rk4 (h, u);
 
 		error = norm_diff (u->y, u->Y, u);
-	} while (error >= u->prec);
+	} while (error >= u->prec && i <= 100000);
 
 	/* finally, the step was good -- we can write y into x */
 	swap (u->x, u->y, u);
@@ -199,8 +201,8 @@ void dump_animate (void * u)
 {
 	int i;
 
-	char * dat1 = (char *) malloc (30 * sizeof (char)),
-	     * dat2 = (char *) malloc (30 * sizeof (char));
+	char * dat1 = (char *) malloc (38 * sizeof (char)),
+	     * dat2 = (char *) malloc (38 * sizeof (char));
 
 	sprintf (dat1, "%s/%05d.txt",
 			((hod *) u)->baseT, ((hod *) u)->t);
@@ -279,8 +281,14 @@ void final_dump (void * u)
 void solver (hod * u)
 {
 	int i;
+
+	/* some dead steps, to reach a sufficient "weird" stat */
+	for (i = 0; i <= u->tdead; i++)
+		step_rk4 (u->h, u);
+
 	for (i = 0; i <= u->tmax; i++)
 	{
+		printf ("%d/%d\n", u->t, u->tmax);
 		adaptive_step_rk4 (u);
 		update (u);
 		u->dump (u);
@@ -288,9 +296,9 @@ void solver (hod * u)
 }
 
 void init (hod * u,
-		int N, int tmax, char * baseT, char * baseJ,
-		double L, double tau, double TL, double TR,
-		double prec, double h, int dump_switch)
+		int N, int tmax, int tdead, char * baseT, char * baseJ,
+		double L, double tau, double TL, double TR, double prec,
+		double h, int dump_switch)
 {
 	u->N    = N;
 	u->tmax = tmax;
@@ -301,27 +309,36 @@ void init (hod * u,
 	u->prec = prec;
 	u->h    = h;
 
-	u->baseT = (char *) malloc (15 * sizeof (char));
-	u->baseJ = (char *) malloc (15 * sizeof (char));
+	u->baseT = (char *) malloc (25 * sizeof (char));
+	u->baseJ = (char *) malloc (25 * sizeof (char));
 	strcpy (u->baseT, baseT);
 	strcpy (u->baseJ, baseJ);
 
 	if (dump_switch == 0) u->dump = &final_dump;
-	if (dump_switch == 1) u->dump = &just_dump;
 	if (dump_switch == 2) u->dump = &dump_animate;
+	if (dump_switch == 1)
+	{
+		u->dump = &just_dump;
+
+		mkdir (baseT, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+		mkdir (baseJ, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+	}
+
 
 	/* here comes the fun part ... vector initialization */
 	u->n = 2 * u->N + 2;
+	u->t = 0;
 
-	u->x   = (double *) malloc (u->n * sizeof (double));
-	u->k1  = (double *) malloc (u->n * sizeof (double));
-	u->k2  = (double *) malloc (u->n * sizeof (double));
-	u->k3  = (double *) malloc (u->n * sizeof (double));
-	u->k4  = (double *) malloc (u->n * sizeof (double));
-	u->T   = (double *) malloc (u->n * sizeof (double));
-	u->Y   = (double *) malloc (u->n * sizeof (double));
-	u->y   = (double *) malloc (u->n * sizeof (double));
+	u->x  = (double *) malloc (u->n * sizeof (double));
+	u->k1 = (double *) malloc (u->n * sizeof (double));
+	u->k2 = (double *) malloc (u->n * sizeof (double));
+	u->k3 = (double *) malloc (u->n * sizeof (double));
+	u->k4 = (double *) malloc (u->n * sizeof (double));
+	u->T  = (double *) malloc (u->n * sizeof (double));
+	u->Y  = (double *) malloc (u->n * sizeof (double));
+	u->y  = (double *) malloc (u->n * sizeof (double));
 
+	/* we also inizialize starting points */
 	u->avT = (double *) calloc (u->N, sizeof (double));
 	u->avJ = (double *) calloc (u->N, sizeof (double));
 
@@ -329,6 +346,23 @@ void init (hod * u,
 	/* the starting position is arbitrary ... let's try this one */
 	for (i = 0; i <= u->n-1; i++)
 		u->x [i] = 0.025*i*i;
+}
+
+void destroy (hod * u)
+{
+	free (u->baseT);
+	free (u->baseJ);
+	free (u->x);
+	free (u->k1);
+	free (u->k2);
+	free (u->k3);
+	free (u->k4);
+	free (u->T);
+	free (u->Y);
+	free (u->y);
+	free (u->avT);
+	free (u->avJ);
+	free (u);
 }
 
 #endif

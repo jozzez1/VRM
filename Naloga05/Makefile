@@ -1,5 +1,5 @@
 CC=clang
-CFLAGS=-Wall -O3 -march=corei7 -lm
+CFLAGS=-O3 -march=corei7 -lm -Wall -pedantic-errors -lc
 PRGNAM=nal5
 SOURCE=prg5.c
 
