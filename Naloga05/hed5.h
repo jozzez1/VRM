@@ -4,12 +4,14 @@
 #ifndef __HEADER_VRM5
 #define __HEADER_VRM5
 
-// link with -lm
+// link with -lm -lc -lgsl -lgslblas
 
 #include <string.h>
 #include <stdlib.h>
 #include <sys/stat.h>
 #include <math.h>
+#include <gsl/gsl_errno.h>
+#include <gsl/gsl_odeiv2.h>
 
 typedef struct
 {
@@ -29,12 +31,6 @@ typedef struct
 	       prec,	// designated step precision
 	       h,	// step length
 	       * x,	// x = x_t = (q_k, p_k, z_L, z_R)^T_t
-	       * k1,	// k1 from RK4
-	       * k2,	// k2 from RK4
-	       * k3,	// k3 from RK4
-	       * k4,	// k4 from RK4
-	       * T,	// temporary vector for summing stuff up
-	       * Y,	// teporary vector, when checking steps
 	       * y,	// y = x_{t+1} = (q_k ...)^T_{t+1}
 	       * avT,	// average temperature profile
 	       * avJ;	// average energy curren
@@ -43,128 +39,33 @@ typedef struct
 	void (* dump) (void *);
 } hod;
 
-/* we give x, we overwrite k */
-void f (double * x, double * k, hod * u)
+/* here's the GSL's integrator ... I give up */
+int deriv (double t, const double * y, double * f, void * param)
 {
-	int N = u->N,
+	int N = ((hod *) param)->N,
 	    i;
 
+	double L   = ((hod *) param)->L,
+	       tau = ((hod *) param)->tau,
+	       TR  = ((hod *) param)->TR,
+	       TL  = ((hod *) param)->TL;
+
+	/* zetas on the edge */
+	f[2*N]   = (1.0/tau) * (y[N]*y[N] - TL);
+	f[2*N+1] = (1.0/tau) * (y[2*N-1]*y[2*N-1] - TR);
+
+	/* q[i] derivatives are quite trivial */
 	for (i = 0; i <= N-1; i++)
-		k[i] = x[i+N];
-	
-	// now we do the p[0]
-	k[i] = x[i-N+1] - x[i-N] * (3 + 4*u->L*x[i-N]*x[i-N]) - x[2*N]*x[i];
-	++i;
+		f[i] = y[i+N];
 
-	// p[i], 0 <= i <= N-1
-	for (; i <= 2*N-2; i++)
-		k[i] = x[i-N+1] + x[i-N-1] - x[i-N] * (3 + 4*u->L*x[i-N]*x[i-N]);
+	/* p[0],p[N-1] derivatives ... edge */
+	f[N]     = (-1)*y[1] - y[2*N]*y[N] - y[0]*(1 + 4*L*y[0]*y[0]);
+	f[2*N-1] = y[N-2] - y[2*N+1]*y[2*N-1] - y[2*N-1]*(1 + 4*L*y[2*N-1]*y[2*N-1]);
 
-	// p[N-1]
-	k[i] = x[i-N-1] - x[i-N] * (3 + 4*u->L*x[i-N]*x[i-N]) - x[2*N+1]*x[i];
-	++i;
+	for (i = N+1; i <= 2*N-2; i++)
+		f[i] = y[i-N-1] - y[i-N+1] - y[i-N] * (1 + 4*L*y[i-N]*y[i-N]);
 
-	// the baths ... z_L and z_R
-	k[i] = (x[N]*x[N] - u->TL)/u->tau;
-	++i;
-	k[i] = (x[2*N-1]*x[2*N-1] - u->TR)/u->tau;
-}
-
-/* swap the two vectors */
-void swap (double * x, double * y, hod * u)
-{
-	int i;
-	for (i = 0; i <= u->n-1; i++)
-	{
-		double s = x[i];
-		x[i] = y[i];
-		y[i] = s;
-	}
-}
-
-/* we sum two vectors with a scale h, which get's written in the temporary one */
-void sum2 (double * x, double * y, double h, hod * u)
-{
-	int i;
-	for (i = 0; i <= u->n-1; i++)
-		u->T[i] = x[i] + h * y[i];
-}
-
-/* multiply vector with a scalar */
-void scale (double h, double * x, hod * u)
-{
-	int i;
-	for (i = 0; i <= u->n-1; i++)
-		x[i] *= h;
-}
-
-/* norm of the difference vector */
-double norm_diff (double * x, double * y, hod * u)
-{
-	double re = 0;
-	int i;
-
-	sum2 (x, y, (-1), u);
-
-	for (i = 0; i <= u->n-1; i++)
-		re += u->T[i] * u->T[i];
-
-	re = sqrt (re);
-	return re;
-}
-
-/* RK4 step */
-void step_rk4 (double h, hod * u)
-{
-	f (u->x, u->k1, u);
-	scale (h, u->k1, u);
-	
-	sum2(u->x, u->k1, 0.5, u);
-	f (u->T, u->k2 , u);
-	scale (h, u->k2, u);
-
-	sum2 (u->x, u->k2, 0.5, u);
-	f (u->T, u->k3, u);
-	scale (h, u->k3, u);
-
-	sum2 (u->x, u->k3, 1.0, u);
-	f (u->T, u->k4, u);
-	scale (h, u->k3, u);
-
-	/* now we sum those babies up ;) */
-	int i;
-	for (i = 0; i <= u->n-1; i++)
-		u->y[i] = u->x[i] + (u->k1[i] + u->k4[i] + 2*(u->k2[i] + u->k3[i]))/6;
-}
-
-/* we adapt the step length for precision */
-void adaptive_step_rk4 (hod * u)
-{
-	int i = 1;
-
-	double h = u->h/i,
-	       error;
-
-	/* we make initial step */
-	step_rk4 (h, u);
-
-	do
-	{
-		i++;
-		h = u->h/i;
-
-		swap (u->y, u->Y, u);
-
-		int j;
-		for (j = 0; j <= i-1; j++)
-			step_rk4 (h, u);
-
-		error = norm_diff (u->y, u->Y, u);
-	} while (error >= u->prec && i <= 100000);
-
-	/* finally, the step was good -- we can write y into x */
-	swap (u->x, u->y, u);
-	u->t++;
+	return GSL_SUCCESS;
 }
 
 /* we update the average values in their respective arrays */
@@ -268,10 +169,8 @@ void final_dump (void * u)
 	FILE * fout = fopen (dat, "w");
 
 	for (i = 0; i <= N-1; i++)
-		fprintf (fout, "% 5d % 10e % 10e\n",
-				((hod *) u)->t,
-				((hod *) u)->avT[i],
-				((hod *) u)->avJ[i]);
+		fprintf (fout, "% 4d % 12e % 12e\n",
+				i, ((hod *) u)->avT[i], ((hod *) u)->avJ[i]);
 
 	fclose (fout);
 	free (dat);
@@ -282,17 +181,50 @@ void solver (hod * u)
 {
 	int i;
 
-	/* some dead steps, to reach a sufficient "weird" stat */
-	for (i = 0; i <= u->tdead; i++)
-		step_rk4 (u->h, u);
+	gsl_odeiv2_system s = { &deriv, NULL, u->n, u };
 
-	for (i = 0; i <= u->tmax; i++)
+	gsl_odeiv2_driver * d =
+		gsl_odeiv2_driver_alloc_y_new (&s, gsl_odeiv2_step_rk4, u->prec, u->prec, 0.0);
+
+	double t = 0.0,
+	       tnext;
+
+	printf ("Dead time:\n");
+	/* some dead steps, to reach a sufficient "weird" stat */
+	for (i = 1; i <= u->tdead; i++)
+	{
+		printf("%d/%d\n", i, u->tdead);
+		tnext = i*u->h;
+		int status = gsl_odeiv2_driver_apply (d, &t, tnext, u->x);
+
+		if (status != GSL_SUCCESS)
+		{
+			fprintf (stderr, "Error! Return value %d!\n", status);
+			break;
+		}
+	}
+
+	/* now we do stuff for real */
+	t = 0;
+	update (u);
+	printf ("Real time:\n");
+	for (u->t = 1; u->t <= u->tmax; u->t++)
 	{
 		printf ("%d/%d\n", u->t, u->tmax);
-		adaptive_step_rk4 (u);
+		tnext = u->t * u->h;
+		int status = gsl_odeiv2_driver_apply (d, &t, tnext, u->x);
+
+		if (status != GSL_SUCCESS)
+		{
+			fprintf (stderr, "Error! Return value %d!\n", status);
+			break;
+		}
+
 		update (u);
 		u->dump (u);
 	}
+
+	gsl_odeiv2_driver_free (d);
 }
 
 void init (hod * u,
@@ -300,14 +232,15 @@ void init (hod * u,
 		double L, double tau, double TL, double TR, double prec,
 		double h, int dump_switch)
 {
-	u->N    = N;
-	u->tmax = tmax;
-	u->L    = L;
-	u->tau  = tau;
-	u->TL   = TL;
-	u->TR   = TR;
-	u->prec = prec;
-	u->h    = h;
+	u->N       = N;
+	u->tmax    = tmax;
+	u->tdead   = tdead;
+	u->L       = L;
+	u->tau     = tau;
+	u->TL      = TL;
+	u->TR      = TR;
+	u->prec    = prec;
+	u->h       = h;
 
 	u->baseT = (char *) malloc (25 * sizeof (char));
 	u->baseJ = (char *) malloc (25 * sizeof (char));
@@ -320,8 +253,8 @@ void init (hod * u,
 	{
 		u->dump = &dump_animate;
 
-		mkdir (u->baseT, 0777);
-		mkdir (u->baseJ, 0777);
+		mkdir (u->baseJ, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+		mkdir (u->baseT, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
 	}
 
 
@@ -330,12 +263,6 @@ void init (hod * u,
 	u->t = 0;
 
 	u->x  = (double *) malloc (u->n * sizeof (double));
-	u->k1 = (double *) malloc (u->n * sizeof (double));
-	u->k2 = (double *) malloc (u->n * sizeof (double));
-	u->k3 = (double *) malloc (u->n * sizeof (double));
-	u->k4 = (double *) malloc (u->n * sizeof (double));
-	u->T  = (double *) malloc (u->n * sizeof (double));
-	u->Y  = (double *) malloc (u->n * sizeof (double));
 	u->y  = (double *) malloc (u->n * sizeof (double));
 
 	/* we also inizialize starting points */
@@ -344,8 +271,13 @@ void init (hod * u,
 
 	int i;
 	/* the starting position is arbitrary ... let's try this one */
-	for (i = 0; i <= u->n-1; i++)
-		u->x [i] = 0.025*i*i;
+	/* already close to the equilibrium -- linear profile */
+	for (i = 0; i <= u->N-1; i++)
+		u->x [i] = 0.0;
+	for (; i <= 2*u->N-1; i++)
+		u->x [i] = sqrt (2 * (u->TL + (i-u->N)*(u->TR - u->TL)/(u->N-1)));
+	for (; i <= u->n-1; i++)
+		u->x[i] = 0.0;
 }
 
 void destroy (hod * u)
@@ -353,12 +285,6 @@ void destroy (hod * u)
 	free (u->baseT);
 	free (u->baseJ);
 	free (u->x);
-	free (u->k1);
-	free (u->k2);
-	free (u->k3);
-	free (u->k4);
-	free (u->T);
-	free (u->Y);
 	free (u->y);
 	free (u->avT);
 	free (u->avJ);
