@@ -71,30 +71,32 @@ int deriv (double t, const double * y, double * f, void * param)
 /* we update the average values in their respective arrays */
 void update (hod * u)
 {
-	int i;
+	int i,
+	    t = u->t + 1;
+
 	for (i = 1; i <= u->N-2; i++)
 	{
-		u->avT[i] *= (1 - 1.0/u->t);
-		u->avT[i] += 0.5 * u->x [i+u->N] * u->x [i+u->N]/u->t;
+		u->avT[i] *= (1 - 1.0/t);
+		u->avT[i] += 0.5 * u->x [i+u->N] * u->x [i+u->N]/t;
 
-		u->avJ[i] *= (1 - 1.0/u->t);
-		u->avJ[i] += (u->x[i-1] - u->x[i+1]) * u->x[i+u->N] * 0.5/u->t;
+		u->avJ[i] *= (1 - 1.0/t);
+		u->avJ[i] += (u->x[i-1] - u->x[i+1]) * u->x[i+u->N] * 0.5/t;
 	}
 
 	/* we take care of those, we have previously ommited */
 	/* first the temperature ... */
-	u->avT[0] *= (1 - 1.0/u->t);
-	u->avT[0] += 0.5 * u->x[u->N] * u->x[u->N]/u->t;
+	u->avT[0] *= (1 - 1.0/t);
+	u->avT[0] += 0.5 * u->x[u->N] * u->x[u->N]/t;
 
-	u->avT [u->N-1] *= (1 - 1.0/u->t);
-	u->avT [u->N-1] += 0.5 * u->x [2 * u->N-1] * u->x[2 * u->N-1]/u->t;
+	u->avT [u->N-1] *= (1 - 1.0/t);
+	u->avT [u->N-1] += 0.5 * u->x [2 * u->N-1] * u->x[2 * u->N-1]/t;
 
 	/* ... and now the energy current */
-	u->avJ[0] *= (1 - 1.0/u->t);
-	u->avJ[0] += (-0.5) * u->x[1] * u->x [u->N]/u->t;
+	u->avJ[0] *= (1 - 1.0/t);
+	u->avJ[0] += (-0.5) * u->x[1] * u->x [u->N]/t;
 
-	u->avJ[u->N-1] *= (1 - 1.0/u->t);
-	u->avJ[u->N-1] += 0.5 * u->x[u->N - 2] * u->x[2*u->N - 1]/u->t;
+	u->avJ[u->N-1] *= (1 - 1.0/t);
+	u->avJ[u->N-1] += 0.5 * u->x[u->N - 2] * u->x[2*u->N - 1]/t;
 }
 
 /* function to dump these sons of bitches for animation */
@@ -206,7 +208,6 @@ void solver (hod * u)
 
 	/* now we do stuff for real */
 	t = 0;
-	update (u);
 	printf ("Real time:\n");
 	for (u->t = 1; u->t <= u->tmax; u->t++)
 	{
