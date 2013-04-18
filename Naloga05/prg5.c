@@ -8,9 +8,11 @@
 
 int main (int argc, char ** argv)
 {
-	int N     = 10,
-	    tmax  = 100,
-	    tdead = 0,
+	int N      = 10,
+	    tmax   = 100,
+	    tdead  = 0,
+	    length = 12,
+	    save   = 1,
 	    arg;
 
 	char * baseT = NULL,
@@ -129,12 +131,18 @@ int main (int argc, char ** argv)
 	hod * u = (hod *) malloc (sizeof (hod));
 	init (u, N, tmax, tdead, baseT, baseJ, L, tau, TL, TR, prec, h, dump_switch);
 
+	solver (u);
+	destroy (u);
+
+	char * command = (char *) malloc (60 * sizeof (char));
+	sprintf (command, "./aniplot.sh %s %s %d %d", baseT, baseJ, length, save);
 	free (baseJ);
 	free (baseT);
 
-	solver (u);
+	system (command);
 
-	destroy (u);
+	free (command);
 
 	return 0;
 }
+
