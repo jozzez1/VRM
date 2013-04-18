@@ -30,7 +30,7 @@ animate ()
 
 	mencoder "mf://*.jpg" -mf w=600:h=400:fps=${fps}:type=jpg -ovc lavc -lavcopts vcodec=mpeg4:mbd=2:trell -oac copy -o $base.avi
 
-	mv $base.avi $cwd
+	mv $base.avi $CWD
 	rm -rf $ani
 
 	cd $CWD
@@ -40,10 +40,10 @@ animate ()
 animate $1 $3
 animate $2 $3
 
-if [ "$4" != "1" ]; then
-	rm -rf $1.avi
-	rm -rf $2.avi
-fi
+#if [ "$4" != "1" ]; then
+#	rm -rf $1.avi
+#	rm -rf $2.avi
+#fi
 
 exit 0
 
