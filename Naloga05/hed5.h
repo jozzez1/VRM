@@ -4,8 +4,6 @@
 #ifndef __HEADER_VRM5
 #define __HEADER_VRM5
 
-// link with -lm -lc -lgsl -lgslblas
-
 #include <string.h>
 #include <stdlib.h>
 #include <sys/stat.h>
@@ -31,7 +29,6 @@ typedef struct
 	       prec,	// designated step precision
 	       h,	// step length
 	       * x,	// x = x_t = (q_k, p_k, z_L, z_R)^T_t
-	       * y,	// y = x_{t+1} = (q_k ...)^T_{t+1}
 	       * avT,	// average temperature profile
 	       * avJ;	// average energy curren
 
@@ -39,7 +36,7 @@ typedef struct
 	void (* dump) (void *);
 } hod;
 
-/* here's the GSL's integrator ... I give up */
+/* here's function for the GSL's integrator ... I give up */
 int deriv (double t, const double * y, double * f, void * param)
 {
 	int N = ((hod *) param)->N,
@@ -71,32 +68,21 @@ int deriv (double t, const double * y, double * f, void * param)
 /* we update the average values in their respective arrays */
 void update (hod * u)
 {
-	int i,
-	    t = u->t + 1;
+	int i = 0,
+	    t = u->t + 1,
+	    N = u->N;
+
+	u->avT[i] = ((t - 1)*1.0/t)*u->avT[i] + (1.0/t)*(0.5 * u->x[i+N]*u->x[i+N]);
+	u->avJ[i] = ((t - 1)*1.0/t)*u->avJ[i] + (1.0/t) * u->x[i+1] * u->x[i+N];
 
 	for (i = 1; i <= u->N-2; i++)
 	{
-		u->avT[i] *= (1 - 1.0/t);
-		u->avT[i] += 0.5 * u->x [i+u->N] * u->x [i+u->N]/t;
-
-		u->avJ[i] *= (1 - 1.0/t);
-		u->avJ[i] += (u->x[i-1] - u->x[i+1]) * u->x[i+u->N] * 0.5/t;
+		u->avT[i] = ((t - 1)*1.0/t)*u->avT[i] + (1.0/t)*(0.5 * u->x[i+N]*u->x[i+N]);
+		u->avJ[i] = ((t - 1)*1.0/t)*u->avJ[i] + (1.0/t)*(u->x[i+1] - u->x[i-1]) * u->x[i+N];
 	}
 
-	/* we take care of those, we have previously ommited */
-	/* first the temperature ... */
-	u->avT[0] *= (1 - 1.0/t);
-	u->avT[0] += 0.5 * u->x[u->N] * u->x[u->N]/t;
-
-	u->avT [u->N-1] *= (1 - 1.0/t);
-	u->avT [u->N-1] += 0.5 * u->x [2 * u->N-1] * u->x[2 * u->N-1]/t;
-
-	/* ... and now the energy current */
-	u->avJ[0] *= (1 - 1.0/t);
-	u->avJ[0] += (-0.5) * u->x[1] * u->x [u->N]/t;
-
-	u->avJ[u->N-1] *= (1 - 1.0/t);
-	u->avJ[u->N-1] += 0.5 * u->x[u->N - 2] * u->x[2*u->N - 1]/t;
+	u->avT[i] = ((t - 1)*1.0/t)*u->avT[i] + (1.0/t)*(0.5 * u->x[i+N]*u->x[i+N]);
+	u->avJ[i] = ((t - 1)*1.0/t)*u->avJ[i] - (1.0/t) * u->x[i-1] * u->x[i+N];
 }
 
 /* function to dump these sons of bitches for animation */
@@ -147,7 +133,7 @@ void just_dump (void * u)
 	for (i = 0; i <= ((hod *) u)->N-1; i++)
 	{
 		fprintf (foutT, "% 10e", ((hod *) u)->avT [i]);
-		fprintf (foutT, "% 10e", ((hod *) u)->avJ [i]); 
+		fprintf (foutJ, "% 10e", ((hod *) u)->avJ [i]); 
 	}
 
 	fprintf (foutT, "\n");
@@ -163,14 +149,13 @@ void just_dump (void * u)
 /* here we just spit out the final part */
 void final_dump (void * u)
 {
-	int N = ((hod *) u)->N,
-	    i;
+	int N = ((hod *) u)->N;
 
 	char * dat = (char *) malloc (20 * sizeof (char));
 	sprintf (dat, "TJ-final-N%d.txt", N);
 	FILE * fout = fopen (dat, "w");
 
-	for (i = 0; i <= N-1; i++)
+	for (int i = 0; i <= N-1; i++)
 		fprintf (fout, "% 4d % 12e % 12e\n",
 				i, ((hod *) u)->avT[i], ((hod *) u)->avJ[i]);
 
@@ -184,7 +169,6 @@ void solver (hod * u)
 	int i;
 
 	gsl_odeiv2_system s = { &deriv, NULL, u->n, u };
-
 	gsl_odeiv2_driver * d =
 		gsl_odeiv2_driver_alloc_y_new (&s, gsl_odeiv2_step_rk4, u->prec, u->prec, 0.0);
 
@@ -197,34 +181,36 @@ void solver (hod * u)
 	{
 		printf("%d/%d\n", i, u->tdead);
 		tnext = i*u->h;
+
 		int status = gsl_odeiv2_driver_apply (d, &t, tnext, u->x);
 
 		if (status != GSL_SUCCESS)
 		{
 			fprintf (stderr, "Error! Return value %d!\n", status);
-			break;
+			exit (1);
 		}
 	}
 
 	/* now we do stuff for real */
 	t = 0;
 	printf ("Real time:\n");
+	update (u);
 	for (u->t = 1; u->t <= u->tmax; u->t++)
 	{
 		printf ("%d/%d\n", u->t, u->tmax);
 		tnext = u->t * u->h;
+
 		int status = gsl_odeiv2_driver_apply (d, &t, tnext, u->x);
 
 		if (status != GSL_SUCCESS)
 		{
 			fprintf (stderr, "Error! Return value %d!\n", status);
-			break;
+			exit (1);
 		}
 
 		update (u);
 		u->dump (u);
 	}
-
 	gsl_odeiv2_driver_free (d);
 }
 
@@ -264,8 +250,6 @@ void init (hod * u,
 	u->t = 0;
 
 	u->x  = (double *) malloc (u->n * sizeof (double));
-	u->y  = (double *) malloc (u->n * sizeof (double));
-
 	/* we also inizialize starting points */
 	u->avT = (double *) calloc (u->N, sizeof (double));
 	u->avJ = (double *) calloc (u->N, sizeof (double));
@@ -286,7 +270,6 @@ void destroy (hod * u)
 	free (u->baseT);
 	free (u->baseJ);
 	free (u->x);
-	free (u->y);
 	free (u->avT);
 	free (u->avJ);
 	free (u);
