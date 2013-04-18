@@ -134,14 +134,18 @@ int main (int argc, char ** argv)
 	solver (u);
 	destroy (u);
 
-	char * command = (char *) malloc (60 * sizeof (char));
-	sprintf (command, "./aniplot.sh %s %s %d %d", baseT, baseJ, length, save);
-	free (baseJ);
-	free (baseT);
+	if (dump_switch == 2)
+	{
+		char * command = (char *) malloc (60 * sizeof (char));
+		sprintf (command, "./aniplot.sh %s %s %d %d", baseT, baseJ, length, save);
 
-	system (command);
+		free (baseJ);
+		free (baseT);
 
-	free (command);
+		system (command);
+
+		free (command);
+	}
 
 	return 0;
 }
