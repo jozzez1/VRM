@@ -77,8 +77,13 @@ bool step_ising (void * g)
 	int n = ((hod *) g)->n,
 	    J = ((hod *) g)->J,
 	    h = ((hod *) g)->h,
-	    i = (int) (n-1) * gsl_rng_uniform (((hod *) g)->rand),
-	    j = (int) (n-1) * gsl_rng_uniform (((hod *) g)->rand);
+	    i = (int) n * gsl_rng_uniform (((hod *) g)->rand),
+	    j = (int) n * gsl_rng_uniform (((hod *) g)->rand);
+
+	if (i == n)
+		i--;
+	if (j == n)
+		j--;
 
 	bool success = true;
 
@@ -89,13 +94,14 @@ bool step_ising (void * g)
 	       s2   = gsl_matrix_get (&m.matrix, i, (j-1+n) % n),
 	       s3   = gsl_matrix_get (&m.matrix, (i + 1) % n, j),
 	       s4   = gsl_matrix_get (&m.matrix, (i - 1 + n) % n, j),
-	       dE   = 2*spin * (h  + J*(s1 + s2 + s3 + s4));
+	       dE   = 2*spin * (h  + J*(s1 + s2 + s3 + s4)),
+	       T    = ((hod *) g)->T;
 
 	if (dE >= 0)
 	{
 	       double xi   = gsl_rng_uniform (((hod *) g)->rand);
 
-	       if (xi > exp (((-1.0) * dE)/((hod *) g)->T))
+	       if (xi > exp (((-1.0) * dE)/T))
 		       success = false;
 	       else
 		       gsl_matrix_set (&m.matrix, i, j, (-1)*spin);
@@ -132,7 +138,7 @@ void dump_ising_animate (hod * u)
 	for (i = 0; i <= u->n-1; i++)
 	{
 		for (j = 0; j <= u->n-1; j++)
-			fprintf (u->fani, "% 2d", (int) u->x[j + i*u->n]);
+			fprintf (u->fani, "% 4d", (int) u->x[j + i*u->n]);
 		fprintf (u->fani, "\n");
 	}
 
@@ -209,8 +215,7 @@ bool step_chain (void * u)
 		}
 	}
 
-	if (success)
-		update_chain ((hod *) u, s1, s2, s3);
+	update_chain ((hod *) u, s1, s2, s3);
 
 	return success;
 }
@@ -218,28 +223,34 @@ bool step_chain (void * u)
 void solver (hod * u)
 {
 	u->I = 0;
-	u->T = 5;
+	u->T = 0.001;
 
+	int k = 0,
+	    r = 0,
+	    j = 0;
 	do
 	{
-		u->T -= u->dT;
+		printf ("% 6d, % 10.4lf, % 6d/%d\n", k, u->T, r, r+j);
 
-		printf ("% 4d, % 10.3lf\n", u->I, u->T);
+		u->dump (u);
 
-		int j = 0;
+		r = 0,
+		j = 0;
 		do
 		{
 			bool success = u->step (u);
 
 			if (success)
-			{
-				u->dump (u);
 				j++;
-			}
-		} while (j <= u->v);
+			else
+				r++;
+
+		} while (j + r <= u->v - 1);
 
 		u->I++;
-	} while (u->T > 0);
+		u->T += u->dT;
+		k++;
+	} while (u->T < u->max);
 }
 
 /* let's just make them all point in one direction */

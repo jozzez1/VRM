@@ -9,7 +9,7 @@
 int main (int argc, char ** argv)
 {
 	int n    = 20,
-	    max  = 100,
+	    max  = 2,
 	    v    = 1000,
 	    save = 1,
 	    mode = 0,
