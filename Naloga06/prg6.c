@@ -4,149 +4,97 @@
 #include <stdio.h>
 #include <getopt.h>
 #include <stdlib.h>
-#include "hed5.h"
+#include "hed6.h"
 
 int main (int argc, char ** argv)
 {
-	int N      = 10,
-	    tmax   = 100,
-	    tdead  = 0,
-	    length = 12,
-	    save   = 1,
+	int n    = 20,
+	    max  = 100,
+	    v    = 1000,
+	    save = 1,
+	    mode = 0,
 	    arg;
 
-	char * baseT = NULL,
-	     * baseJ = NULL;
-	
-	double L    = 0,
-	       tau  = 1,
-	       TL   = 2,
-	       TR   = 1,
-	       prec = 1e-4,
-	       h    = 1e-2;
-
-	int dump_switch = 1;
+	double h    = 0,
+	       J    = 1,
+	       dT   = 0.01;
 
 	struct option longopts[] =
 	{
-		{ "TR",       required_argument,        NULL,         'R' },
-		{ "TL",       required_argument,        NULL,         'L' },
-		{ "tmax",     required_argument,        NULL,         'm' },
-		{ "tdead",    required_argument,        NULL,         'd' },
-		{ "prec",     required_argument,        NULL,         'p' },
-		{ "step",     required_argument,        NULL,         'h' },
-		{ "out",      required_argument,        NULL,         'o' },
-		{ "tau",      required_argument,        NULL,         't' },
-		{ "lambda",   required_argument,        NULL,         'l' },
-		{ "number",   required_argument,        NULL,         'N' },
-		{ "animate",  no_argument,              NULL,         '2' },
-		{ "dump",     no_argument,              NULL,         '1' },
-		{ "less",     no_argument,              NULL,         '0' },
-		{ "list",     no_argument,              NULL,           1 },
+		{ "max",      required_argument,        NULL,         'm' },
+		{ "magnet",   required_argument,        NULL,         'h' },
+		{ "step-dT",  required_argument,        NULL,         'd' },
+		{ "size-n",   required_argument,        NULL,         'n' },
+		{ "force",    required_argument,        NULL,         'J' },
+		{ "wait",     required_argument,        NULL,         'v' },
+		{ "mode",     no_argument,              NULL,         'i' },
+		{ "no-save",  no_argument,              NULL,           2 },
+		{ "help",     no_argument,              NULL,           1 },
 	};
 
-	while ((arg = getopt_long (argc, argv, "R:L:m:d:p:h:o:t:l:N:210", longopts, NULL)) != -1)
+	while ((arg = getopt_long (argc, argv, "m:h:d:n:J:v:i", longopts, NULL)) != -1)
 	{
 		switch (arg)
 		{
-			case 'R':
-				TR = atof (optarg);
-				break;
-			case 'L':
-				TL = atof (optarg);
-				break;
 			case 'm':
-				tmax = atoi (optarg);
-				break;
-			case 'd':
-				tdead = atoi (optarg);
-				break;
-			case 'p':
-				prec = atof (optarg);
+				max = atoi (optarg);
 				break;
 			case 'h':
 				h = atof (optarg);
 				break;
-			case 't':
-				tau = atof (optarg);
+			case 'd':
+				dT = atof (optarg);
 				break;
-			case 'l':
-				L = atof (optarg);
+			case 'n':
+				n = atoi (optarg);
 				break;
-			case 'N':
-				N = atoi (optarg);
+			case 'J':
+				J = atoi (optarg);
 				break;
-			case '0':
-				dump_switch = 0;
+			case 'v':
+				v = atoi (optarg);
 				break;
-			case '1':
-				dump_switch = 1;
-				break;
-			case '2':
-				dump_switch = 2;
-				break;
-			case 'o':
-				baseJ = (char *) malloc (25 * sizeof (char));
-				baseT = (char *) malloc (25 * sizeof (char));
-
-				sprintf (baseJ, "%s-T", optarg);
-				sprintf (baseT, "%s-J", optarg);
-
+			case 2:
+				save = 0;
 				break;
 			case 1:
 				printf ("List of commands:\n");
-				printf ("--list,                    printf this list\n");
-				printf ("--TR,       -R <1>         right-hand side temperature\n");
-				printf ("--TL,       -L <2>         left-hand side temperature\n");
-				printf ("--tmax,     -m <100>       maximum time iteration\n");
-				printf ("--tdead,    -d <0>         dead time\n");
-				printf ("--prec,     -p <1e-4>      RK4 precision\n");
-				printf ("--step,     -h <1e-2>      RK4 step length\n");
-				printf ("--out,      -o <format>    output file name\n");
-				printf ("--tau,      -t <1>         tau value\n");
-				printf ("--lambda,   -l <0>         lambda value\n");
-				printf ("--number,   -N <10>        number of particles\n");
-				printf ("---------------------------\n");
-				printf ("--animate,  -2             animate\n");
-				printf ("--dump,     -1 <default>   don't animate, just dump output\n");
-				printf ("--less,     -0             only dump the end result\n");
+				printf ("--help,          printf this list\n");
+				printf ("--max,      -m   maximum time iteration\n");
+				printf ("--magnet,   -h   magnetic field strength\n");
+				printf ("--step-dT,  -d   temperature step size\n");
+				printf ("--size-n,   -n   size of our \"box\"\n");
+				printf ("--force,    -J   (J = 1) ferro- or (J = -1)anti-ferromagnet\n");
+				printf ("--wait,     -v   iterations we spend averaging\n");
+				printf ("--no-save,       delete output after program's been finished\n");
 				exit (EXIT_SUCCESS);
+			case 'i':
+				mode = 1;
+				break;
+
 			default:
 				printf ("Unknown command!\nTry %s --list, for list of commands\n", argv[0]);
 				abort ();
 		}
 	}
 
-	/* if we have to set the name */
-	if (baseJ == NULL || baseT == NULL)
-	{
-		baseJ = (char *) malloc (25 * sizeof (char));
-		baseT = (char *) malloc (25 * sizeof (char));
-
-		sprintf (baseJ, "J-N%d-TR%.0lf-TL%.0lf", N, TR, TL);
-		sprintf (baseT, "T-N%d-TR%.0lf-TL%.0lf", N, TR, TL);
-	}
-
 	/* we initialize that sonnuvabitch */
 	hod * u = (hod *) malloc (sizeof (hod));
-	init (u, N, tmax, tdead, baseT, baseJ, L, tau, TL, TR, prec, h, dump_switch);
+	init (u, mode, n, J, v, max, dT, h);
+
+//	printf ("u->x[3, 9] = %d\n", (int) u->x [9 + 3*20]);
 
 	solver (u);
 	destroy (u);
 
-	if (dump_switch == 2)
-	{
-		char * command = (char *) malloc (60 * sizeof (char));
-		sprintf (command, "./aniplot.sh %s %s %d %d", baseT, baseJ, length, save);
+/*
+	char * command = (char *) malloc (60 * sizeof (char));
+	sprintf (command, "./aniplot.sh %s %s %d %d", baseT, baseJ, length, save);
 
-		free (baseJ);
-		free (baseT);
+	system (command);
 
-		system (command);
-
-		free (command);
-	}
-
+	free (command);
+*/
 	return 0;
 }
 
