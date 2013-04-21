@@ -65,8 +65,8 @@ int main (int argc, char ** argv)
 			case 1:
 				printf ("List of commands:\n");
 				printf ("--help,          printf this list\n");
-				printf ("--max,      -m   maximum time iteration\n");
-				printf ("--length,   -l   length of the animation\n");
+				printf ("--max,      -m   maximum allowed temperature\n");
+				printf ("--length,   -l   length of the animation in seconds\n");
 				printf ("--magnet,   -h   magnetic field strength\n");
 				printf ("--step-dT,  -d   temperature step size\n");
 				printf ("--size-n,   -n   size of our \"box\"\n");
@@ -91,7 +91,7 @@ int main (int argc, char ** argv)
 	solver (u);
 
 	char * command = (char *) malloc (60 * sizeof (char));
-	sprintf (command, "./anime.sh %s %d %d", u->basename, save, length);
+	sprintf (command, "./anime.sh %s %d %d %lf", u->basename, save, length, u->dT);
 
 	destroy (u);
 	system (command);

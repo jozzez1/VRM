@@ -8,7 +8,8 @@ DIR=`pwd`/$1
 ANI=$DIR/animation
 SAVE=$2
 LENGTH=$3
-COUNT=0
+dT=$4
+COUNT="0"
 
 NUMBER=`ls $DIR | wc -l`
 FPS=`echo "$NUMBER/$LENGTH" | bc`
@@ -20,26 +21,25 @@ cd $ANI
 
 for FILE in `ls $DIR | grep txt`;
 do
-	echo "set terminal jpeg size 600,400;
-	  set tics nomirror;
-	  set y2tics;
-	  set grid;
-	  set label \"$COUNT\" at screen 0.20,0.87;
-	  set ylabel \"|u(x)|^2\";
-	  set y2label \"V(x)\";
-	  set xlabel \"x\";
-	  set yrange [0:1];
+	echo "set terminal jpeg enhanced font \"/usr/local/lib/X11/fonts/TTF/luximr.ttf,12\" size 550,400;
+	  unset surf;
+	  set view map;
+	  set palette rgbformulae 10,10,10 maxcolor 2;
+	  set title \"Temperature = $T\";
 	  set output \"$FILE.jpg\";
-	  plot \"$DIR/$FILE\" u 1:2 w l lt 1 title \"|u(x)|^2\" axes x1y1, \
-		 \"$DIR/$FILE\" u 1:3 w l lt 3 title \"V\" axes x1y2 " | gnuplot
+	  set cbrange [-1.1:1.1];
+	  plot \"$DIR/$FILE\" matrix with image title '';" | gnuplot
 
-	  (( COUNT ++ ))
+	(( COUNT ++ ))
+
+	I="$COUNT"
+	T=`echo "scale=5;$dT*$I" | bc`
 done
 
-mencoder "mf://*.jpg" -mf w=600:h=400:fps=${FPS}:type=jpg -ovc lavc -lavcopts vcodec=mpeg4:mbd=2:trell -oac copy -o $1.avi
+mencoder -msgcolor "mf://*.jpg" -mf w=600:h=400:fps=${FPS}:type=jpg -ovc lavc -lavcopts vcodec=mpeg4:mbd=2:trell -oac copy -o $1.avi
 
-rm *.jpeg
 cp $1.avi $CWD
+rm *.jpeg
 
 cd $CWD
 rm -rf $DIR
