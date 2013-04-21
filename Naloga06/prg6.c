@@ -8,11 +8,12 @@
 
 int main (int argc, char ** argv)
 {
-	int n    = 20,
-	    max  = 2,
-	    v    = 1000,
-	    save = 1,
-	    mode = 0,
+	int n       = 20,
+	    max     = 2,
+	    v       = 1000,
+	    save    = 1,
+	    mode    = 0,
+	    length  = 12,
 	    arg;
 
 	double h    = 0,
@@ -21,18 +22,19 @@ int main (int argc, char ** argv)
 
 	struct option longopts[] =
 	{
-		{ "max",      required_argument,        NULL,         'm' },
-		{ "magnet",   required_argument,        NULL,         'h' },
-		{ "step-dT",  required_argument,        NULL,         'd' },
-		{ "size-n",   required_argument,        NULL,         'n' },
-		{ "force",    required_argument,        NULL,         'J' },
-		{ "wait",     required_argument,        NULL,         'v' },
-		{ "mode",     no_argument,              NULL,         'i' },
-		{ "no-save",  no_argument,              NULL,           2 },
-		{ "help",     no_argument,              NULL,           1 },
+		{ "max",      required_argument,     NULL,    'm' },
+		{ "magnet",   required_argument,     NULL,    'h' },
+		{ "step-dT",  required_argument,     NULL,    'd' },
+		{ "size-n",   required_argument,     NULL,    'n' },
+		{ "force",    required_argument,     NULL,    'J' },
+		{ "wait",     required_argument,     NULL,    'v' },
+		{ "length",   required_argument,     NULL,    'l' },
+		{ "mode",     no_argument,           NULL,    'i' },
+		{ "no-save",  no_argument,           NULL,      2 },
+		{ "help",     no_argument,           NULL,      1 },
 	};
 
-	while ((arg = getopt_long (argc, argv, "m:h:d:n:J:v:i", longopts, NULL)) != -1)
+	while ((arg = getopt_long (argc, argv, "l:m:h:d:n:J:v:i", longopts, NULL)) != -1)
 	{
 		switch (arg)
 		{
@@ -54,6 +56,9 @@ int main (int argc, char ** argv)
 			case 'v':
 				v = atoi (optarg);
 				break;
+			case 'l':
+				length = atoi (optarg);
+				break;
 			case 2:
 				save = 0;
 				break;
@@ -61,6 +66,7 @@ int main (int argc, char ** argv)
 				printf ("List of commands:\n");
 				printf ("--help,          printf this list\n");
 				printf ("--max,      -m   maximum time iteration\n");
+				printf ("--length,   -l   length of the animation\n");
 				printf ("--magnet,   -h   magnetic field strength\n");
 				printf ("--step-dT,  -d   temperature step size\n");
 				printf ("--size-n,   -n   size of our \"box\"\n");
@@ -82,19 +88,15 @@ int main (int argc, char ** argv)
 	hod * u = (hod *) malloc (sizeof (hod));
 	init (u, mode, n, J, v, max, dT, h);
 
-//	printf ("u->x[3, 9] = %d\n", (int) u->x [9 + 3*20]);
-
 	solver (u);
-	destroy (u);
 
-/*
 	char * command = (char *) malloc (60 * sizeof (char));
-	sprintf (command, "./aniplot.sh %s %s %d %d", baseT, baseJ, length, save);
+	sprintf (command, "./anime.sh %s %d %d", u->basename, save, length);
 
+	destroy (u);
 	system (command);
-
 	free (command);
-*/
+
 	return 0;
 }
 
