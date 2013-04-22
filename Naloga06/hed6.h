@@ -228,6 +228,8 @@ void solver (hod * u)
 	int k = 0,
 	    r = 0,
 	    j = 0;
+
+	// first we increase the temperature
 	do
 	{
 		printf ("% 6d, % 10.4lf, % 6d/%d\n", k, u->T, r, r+j);
@@ -251,6 +253,31 @@ void solver (hod * u)
 		u->T += u->dT;
 		k++;
 	} while (u->T < u->max);
+
+	// and now we reverse the process, for the LULZ
+	do
+	{
+		printf ("% 6d, % 10.4lf, % 6d/%d\n", k, u->T, r, r+j);
+
+		r = 0,
+		j = 0;
+		do
+		{
+			bool success = u->step (u);
+
+			if (success)
+				j++;
+			else
+				r++;
+
+		} while (j + r <= u->v - 1);
+
+		u->dump (u);
+
+		u->I++;
+		u->T -= u->dT;
+		k++;
+	} while (u->T > 0.2);
 }
 
 /* let's just make them all point in one direction */
