@@ -91,7 +91,7 @@ int main (int argc, char ** argv)
 	solver (u);
 
 	char * command = (char *) malloc (60 * sizeof (char));
-	sprintf (command, "./anime.sh %s %d %d %lf", u->basename, save, length, u->dT);
+	sprintf (command, "zsh ./anime.sh %s %d %d %lf", u->basename, save, length, u->dT);
 
 	destroy (u);
 	system (command);

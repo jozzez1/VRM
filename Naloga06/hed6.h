@@ -131,14 +131,14 @@ void dump_ising_animate (hod * u)
 	int i, j;
 
 	char * filename = (char *) malloc (40* sizeof (char));
-	sprintf (filename, "%s/%05d.txt", u->basename, u->I);
+	sprintf (filename, "%s/%06d.txt", u->basename, u->I);
 
 	u->fani = fopen (filename, "w");
 
 	for (i = 0; i <= u->n-1; i++)
 	{
 		for (j = 0; j <= u->n-1; j++)
-			fprintf (u->fani, "% 4d", (int) u->x[j + i*u->n]);
+			fprintf (u->fani, "% 6d", (int) u->x[j + i*u->n]);
 		fprintf (u->fani, "\n");
 	}
 
@@ -223,7 +223,7 @@ bool step_chain (void * u)
 void solver (hod * u)
 {
 	u->I = 0;
-	u->T = 0.001;
+	u->T = 0.5;
 
 	int k = 0,
 	    r = 0,
