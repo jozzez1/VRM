@@ -8,17 +8,16 @@
 
 int main (int argc, char ** argv)
 {
-	int n       = 20,
-	    max     = 2,
+	int n       = 100,
 	    v       = 1000,
 	    save    = 1,
-	    mode    = 0,
 	    length  = 12,
 	    arg;
 
 	double h    = 0,
 	       J    = 1,
-	       dT   = 0.01;
+	       max  = 1.5,
+	       dT   = 0.001;
 
 	struct option longopts[] =
 	{
@@ -26,20 +25,19 @@ int main (int argc, char ** argv)
 		{ "magnet",   required_argument,     NULL,    'h' },
 		{ "step-dT",  required_argument,     NULL,    'd' },
 		{ "size-n",   required_argument,     NULL,    'n' },
-		{ "force",    required_argument,     NULL,    'J' },
+		{ "ferro",    required_argument,     NULL,    'J' },
 		{ "wait",     required_argument,     NULL,    'v' },
 		{ "length",   required_argument,     NULL,    'l' },
-		{ "mode",     no_argument,           NULL,    'i' },
 		{ "no-save",  no_argument,           NULL,      2 },
 		{ "help",     no_argument,           NULL,      1 },
 	};
 
-	while ((arg = getopt_long (argc, argv, "l:m:h:d:n:J:v:i", longopts, NULL)) != -1)
+	while ((arg = getopt_long (argc, argv, "l:m:h:d:n:J:v:", longopts, NULL)) != -1)
 	{
 		switch (arg)
 		{
 			case 'm':
-				max = atoi (optarg);
+				max = atof (optarg);
 				break;
 			case 'h':
 				h = atof (optarg);
@@ -52,6 +50,7 @@ int main (int argc, char ** argv)
 				break;
 			case 'J':
 				J = atoi (optarg);
+				if (J == 0) J = -1;
 				break;
 			case 'v':
 				v = atoi (optarg);
@@ -74,10 +73,6 @@ int main (int argc, char ** argv)
 				printf ("--wait,     -v   iterations we spend averaging\n");
 				printf ("--no-save,       delete output after program's been finished\n");
 				exit (EXIT_SUCCESS);
-			case 'i':
-				mode = 1;
-				break;
-
 			default:
 				printf ("Unknown command!\nTry %s --list, for list of commands\n", argv[0]);
 				abort ();
@@ -85,15 +80,15 @@ int main (int argc, char ** argv)
 	}
 
 	/* we initialize that sonnuvabitch */
-	hod * u = (hod *) malloc (sizeof (hod));
-	init (u, mode, n, J, v, max, dT, h);
+	ising * u = (ising *) malloc (sizeof (ising));
+	init_ising (u, n, v, J, h, max, dT);
 
 	solver (u);
 
 	char * command = (char *) malloc (60 * sizeof (char));
-	sprintf (command, "zsh ./anime.sh %s %d %d %lf", u->basename, save, length, u->dT);
+	sprintf (command, "zsh ./anime.sh %s %d %d %lf %d", u->base, save, length, u->dT, u->n);
 
-	destroy (u);
+	destroy_ising (u);
 	system (command);
 	free (command);
 

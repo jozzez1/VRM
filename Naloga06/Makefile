@@ -17,4 +17,4 @@ dbg:
 	$(CC) -o $(PRGNAM) $(SOURCE) $(CFLAGS) -g
 
 clean:
-	rm -rf c0* c1*
+	rm -rf J*
