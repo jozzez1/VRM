@@ -7,7 +7,11 @@
 #include <sys/stat.h>
 #include <math.h>
 #include <limits.h>
+#include <stdlib.h>
 #include <gsl/gsl_rng.h>
+
+// threading for plotter
+#include <omp.h> // !!! needs gcc compiler!
 
 /* we start over ... */
 typedef struct
@@ -26,7 +30,8 @@ typedef struct
 	       M,	// <M>
 	       T,	// 1/beta
 	       dT,	// temperature step
-	       Tmax;	// maximum allowd temperature
+	       Tmin,	// minimum allowed temperature
+	       Tmax;	// maximum allowed temperature
 
 	gsl_rng * rand; // random number generator
 
@@ -40,7 +45,7 @@ typedef struct
 } ising;
 
 void init_ising (ising * u,
-		int n, int v, int J, double h, double Tmax, double dT)
+		int n, int v, int J, double h, double Tmax, double dT, double Tmin)
 {
 	/* we take values from the input */
 	u->n      = n;
@@ -49,14 +54,16 @@ void init_ising (ising * u,
 	u->v      = v;
 	u->Tmax   = Tmax;
 	u->dT     = dT;
+	u->Tmin   = Tmin;
 
+	int N = n*n;
 	/* prepare ground for grid initialization */
-	u->g = (int *) malloc (n*n * sizeof (int));
-	for (int i = 0; i < n*n-1; i++)
-		u->g[i] = 1;
+	u->g = (int *) malloc (N * sizeof (int));
+	for (int i = 0; i < N-1; i++)
+		u->g[i] = -1;
 
 	/* prepare the other stuff */
-	u->H  = n*n * (4*J + h) * (-1);
+	u->H  = (-1)*N*(4*J + h);
 
 	u->base = (char *) malloc (30 * sizeof (char));
 	u->file = (char *) malloc (34 * sizeof (char));
@@ -66,9 +73,9 @@ void init_ising (ising * u,
 
 	u->fout = fopen (u->file, "w");
 
-	u->rand = gsl_rng_alloc (gsl_rng_taus);
+	u->rand = gsl_rng_alloc (gsl_rng_mt19937);
 	/* let's choose a random seed */
-	FILE * frandom = fopen ("/dev/random", "r");
+	FILE * frandom = fopen ("/dev/urandom", "r");
 
 	int seed;
 	fread (&seed, sizeof (int), 1, frandom);
@@ -105,10 +112,7 @@ int step_ising (ising * u)
 	int re = 0;
 
 	/* we calculate the difference in energy */
-	u->dE = 2*u->g[i*u->n + j] *
-		(u->J * (u->g[(j+1)%u->n + i*u->n] + u->g[j + (i+1)%u->n] +
-			 u->g[(j-1+u->n)%u->n + i*u->n] + u->g[j + (i+u->n-1)%u->n] +
-			 u->h));
+	u->dE = 2*u->g[i*u->n + j] * (u->J * (u->g[(j+1)%u->n + i*u->n] + u->g[j + (i+1)%u->n] + u->g[(j-1+u->n)%u->n + i*u->n] + u->g[j + (i+u->n-1)%u->n] + u->h));
 
 	/* now we make the drawing of the Three */
 	if (u->dE < 0)
@@ -179,7 +183,7 @@ void reset (ising * u)
 
 void solver (ising * u)
 {
-	u->T = 0.5;
+	u->T = u->Tmin;
 
 	do
 	{

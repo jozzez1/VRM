@@ -1,4 +1,4 @@
-// prg5.c
+// prg6.c
 ////////////
 
 #include <stdio.h>
@@ -17,11 +17,13 @@ int main (int argc, char ** argv)
 	double h    = 0,
 	       J    = 1,
 	       max  = 1.5,
+	       Tmin = 0.5,
 	       dT   = 0.001;
 
 	struct option longopts[] =
 	{
-		{ "max",      required_argument,     NULL,    'm' },
+		{ "max",      required_argument,     NULL,    'M' },
+		{ "min",      required_argument,     NULL,    'm' },
 		{ "magnet",   required_argument,     NULL,    'h' },
 		{ "step-dT",  required_argument,     NULL,    'd' },
 		{ "size-n",   required_argument,     NULL,    'n' },
@@ -32,11 +34,14 @@ int main (int argc, char ** argv)
 		{ "help",     no_argument,           NULL,      1 },
 	};
 
-	while ((arg = getopt_long (argc, argv, "l:m:h:d:n:J:v:", longopts, NULL)) != -1)
+	while ((arg = getopt_long (argc, argv, "l:M:m:h:d:n:J:v:", longopts, NULL)) != -1)
 	{
 		switch (arg)
 		{
 			case 'm':
+				Tmin = atof (optarg);
+				break;
+			case 'M':
 				max = atof (optarg);
 				break;
 			case 'h':
@@ -81,16 +86,33 @@ int main (int argc, char ** argv)
 
 	/* we initialize that sonnuvabitch */
 	ising * u = (ising *) malloc (sizeof (ising));
-	init_ising (u, n, v, J, h, max, dT);
+	init_ising (u, n, v, J, h, max, dT, Tmin);
 
 	solver (u);
 
-	char * command = (char *) malloc (60 * sizeof (char));
-	sprintf (command, "zsh ./anime.sh %s %d %d %lf %d", u->base, save, length, u->dT, u->n);
+	char * stuff;
+	#pragma omp parallel private (stuff) num_threads (8)
+	{
+		#pragma omp for
+		for (int k = 0; k <= u->I-1; k++)
+		{
+			stuff = (char *) malloc (60 * sizeof (char));
+			sprintf (stuff, "./animate.sh %s %06d %d %lf %lf",
+					u->base, k, u->n, u->dT, u->Tmin);
+			system (stuff);
 
-	destroy_ising (u);
+			free (stuff);
+		}
+	}
+
+	printf ("Finished with parallel stuff!\n");
+
+	char * command = (char *) malloc (60 * sizeof (char));
+	sprintf (command, "./anime.sh %s %d %d", u->base, save, length);
+
 	system (command);
 	free (command);
+	destroy_ising (u);
 
 	return 0;
 }
