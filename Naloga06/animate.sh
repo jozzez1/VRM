@@ -2,7 +2,7 @@
 
 dir=$1
 base=$2
-range=$3
+range=`echo "scale = 1; $3+1" | bc`
 dT=$4
 minT=$5
 
@@ -15,8 +15,8 @@ echo "set terminal jpeg enhanced font \"$font,12\" size 550,400;
   set palette rgbformulae 10,10,10 maxcolor 2;
   set title \"Temperature = $temperature\";
   set output \"$dir/$base.jpg\";
-  set xrange [0:$range];
-  set yrange [0:$range];
+  set xrange [-1:$range];
+  set yrange [-1:$range];
   set cbrange [-1.1:1.1];
   plot \"$dir/$base.txt\" matrix with image title ''" | gnuplot
 

@@ -8,6 +8,7 @@
 #include <math.h>
 #include <limits.h>
 #include <stdlib.h>
+#include <gsl/gsl_matrix.h>
 #include <gsl/gsl_rng.h>
 
 // threading for plotter
@@ -88,6 +89,11 @@ void init_ising (ising * u,
 	/* we will initialize T and fani later */
 }
 
+int get_spin (int * g, int N, int i, int j)
+{
+	return g [i*N + j];
+}
+
 void destroy_ising (ising * u)
 {
 	fclose (u->fout);
@@ -111,10 +117,15 @@ int step_ising (ising * u)
 
 	int re = 0;
 
-	/* we calculate the difference in energy */
-	u->dE = 2*u->g[i*u->n + j] * (u->J * (u->g[(j+1)%u->n + i*u->n] + u->g[j + (i+1)%u->n] + u->g[(j-1+u->n)%u->n + i*u->n] + u->g[j + (i+u->n-1)%u->n] + u->h));
+	int spin = get_spin (u->g, u->n, i, j),
+	    s1   = get_spin (u->g, u->n, i, (j + 1)%u->n),
+	    s2   = get_spin (u->g, u->n, i, (j + u->n - 1)%u->n),
+	    s3   = get_spin (u->g, u->n, (i+1) % u->n, j),
+	    s4   = get_spin (u->g, u->n, (i + u->n - 1) % u->n, j);
 
-	/* now we make the drawing of the Three */
+	u->dE = 2*spin * (u->J * (s1 + s2 + s3 + s4) + u->h);
+
+	/* now we make "The Drawing of the Three (TM)" */
 	if (u->dE < 0)
 		u->g[i*u->n + j] *= (-1);
 
