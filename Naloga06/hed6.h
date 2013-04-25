@@ -8,11 +8,15 @@
 #include <math.h>
 #include <limits.h>
 #include <stdlib.h>
+#include <time.h>
 #include <gsl/gsl_matrix.h>
 #include <gsl/gsl_rng.h>
 
+
 // threading for plotter
-#include <omp.h> // !!! needs gcc compiler!
+#include <omp.h> // !!! requires the GNU Compiler Collection (gcc) !!! -- already in the make file
+
+static const double TC = 2.269185314;
 
 /* we start over ... */
 typedef struct
@@ -21,6 +25,7 @@ typedef struct
 	    J,		// well some parameter, you can figure out which
 	    I,		// internal index
 	    v,		// averaging time
+	    mode,	// if we measure hysteresis (after heating, we cool the system)
 	    k;		// internal index
 
 	double h,	// magnetic field strength
@@ -29,6 +34,7 @@ typedef struct
 	       E,	// <E>
 	       E2,	// <E^2>
 	       M,	// <M>
+	       m,	// average spin <S>
 	       T,	// 1/beta
 	       dT,	// temperature step
 	       Tmin,	// minimum allowed temperature
@@ -46,13 +52,14 @@ typedef struct
 } ising;
 
 void init_ising (ising * u,
-		int n, int v, int J, double h, double Tmax, double dT, double Tmin)
+		int n, int v, int J, int mode, double h, double Tmax, double dT, double Tmin)
 {
 	/* we take values from the input */
 	u->n      = n;
 	u->h      = h;
 	u->J      = J;
 	u->v      = v;
+	u->mode   = mode;
 	u->Tmax   = Tmax;
 	u->dT     = dT;
 	u->Tmin   = Tmin;
@@ -65,6 +72,7 @@ void init_ising (ising * u,
 
 	/* prepare the other stuff */
 	u->H  = (-1)*N*(4*J + h);
+	u->m  = u->g[0]*N;
 
 	u->base = (char *) malloc (30 * sizeof (char));
 	u->file = (char *) malloc (34 * sizeof (char));
@@ -124,6 +132,7 @@ int step_ising (ising * u)
 	    s4   = get_spin (u->g, u->n, (i + u->n - 1) % u->n, j);
 
 	u->dE = 2*spin * (u->J * (s1 + s2 + s3 + s4) + u->h);
+	u->m += (-2)*spin;
 
 	/* now we make "The Drawing of the Three (TM)" */
 	if (u->dE < 0)
@@ -133,7 +142,7 @@ int step_ising (ising * u)
 	{
 		float xi = gsl_rng_uniform (u->rand);
 
-		if (xi < exp ((-1)*u->dE/u->T))
+		if (xi < exp ((-1)*u->dE/(TC * u->T)))
 			u->g [i*u->n + j] *= (-1);
 
 		else
@@ -151,16 +160,16 @@ void update (ising * u)
 	u->H += u->dE;
 	u->E  = (1 - 1.0/u->k)*u->E  + (1.0/u->k)*u->H;
 	u->E2 = (1 - 1.0/u->k)*u->E2 + (1.0/u->k)*(u->H * u->H);
-	u->M  = (1 - 1.0/u->k)*u->M  + (1.0/u->k)*u->M;
+	u->M  = (1 - 1.0/u->k)*u->M  + (1.0/u->k)*(1.0*u->m/(u->n * u->n));
 }
 
 void dump_regular (ising * u)
 {
-	double chi = (1.0/u->T) * (1 - u->M * u->M),
-	       Cv  = (1.0/(u->T * u->T)) * (u->E2 - u->E*u->E);
+	double chi = (1.0/(TC * u->T)) * (1 - u->M * u->M),
+	       Cv  = (1.0/pow (u->T * TC, 2)) * (u->E2 - u->E*u->E);
 
 	fprintf (u->fout, "% 12e % 12e % 12e % 12e\n",
-			u->T, u->H, chi, Cv);
+			u->T*TC, u->E, Cv, chi);
 }
 
 void dump_animate (ising * u)
@@ -181,9 +190,11 @@ void dump_animate (ising * u)
 
 void dump (ising * u)
 {
-	dump_regular (u);
 	dump_animate (u);
+	if ( (int) (u->T * TC*500) % 10 == 0)
+		dump_regular (u);
 }
+
 
 void reset (ising * u)
 {
@@ -192,10 +203,44 @@ void reset (ising * u)
 	u->E2    = 0;
 }
 
+// 'a' out of 'b' things are done, we started at time 'start'
+void progress_bar (int a, int b, time_t * start)
+{
+	time_t now;
+	double dsec,
+	       left;
+	if (start)
+	{
+		// we obtain current time
+		time (&now);
+
+		dsec = difftime (now, *start);
+		left = (b - a) * dsec/b;
+
+		printf ("ETA:% 3.2lfs | ", left);
+	}
+
+	int percent = 20 * a/b;
+	printf ("DONE: % 6d/%d (% 3.0lf%%) [", a, b, 100.0*a/b);
+	
+	for (int i = 0; i <= percent-1; i++)
+		printf ("=");
+	printf (">");
+	for (int i = percent; i <= 18; i++)
+		printf (" ");
+	printf ("]\n\033[F\033[J");
+}
+
 void solver (ising * u)
 {
 	u->T = u->Tmin;
 
+	int max = (u->mode + 1) * (u->Tmax - u->Tmin)/u->dT;
+	time_t now;
+
+	time (&now);
+
+	printf ("Calculating!");
 	do
 	{
 		int r = 0;
@@ -208,12 +253,31 @@ void solver (ising * u)
 		dump (u);
 		reset (u);
 
-		printf ("% 6d, %10.4lf, %6d/%d\n", u->I, u->T, r, u->v);
-
+		progress_bar (u->I, max, &now);
 		u->I++;
 		u->T += u->dT;
 
 	} while (u->T < u->Tmax);
+
+	if (u->mode == 1)
+	{
+		do
+		{
+			int r = 0;
+			for (u->k = 1; u->k <= u->v; u->k++)
+			{
+				r += step_ising (u);
+				update (u);
+			}
+
+			dump (u);
+			reset (u);
+
+			progress_bar (u->I, max, &now);
+			u->I++;
+			u->T -= u->dT;
+		} while (u->T > u->Tmin);
+	}
 }
 
 #endif

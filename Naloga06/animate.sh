@@ -2,12 +2,10 @@
 
 dir=$1
 base=$2
-range=`echo "scale = 1; $3+1" | bc`
-dT=$4
-minT=$5
+range=`echo "scale = 1; $3-1" | bc`
+temperature=$4
 
 font=/usr/local/lib/X11/fonts/ChromeOS/Arimo-Regular.ttf
-temperature=`echo "scale = 4; $dT * $base + $minT" | bc`
 
 echo "set terminal jpeg enhanced font \"$font,12\" size 550,400;
   unset surf;

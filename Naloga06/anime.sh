@@ -4,8 +4,8 @@ CWD=`pwd`
 DIR=`pwd`/$1
 SAVE=$2
 LENGTH=$3
+NUMBER=$4
 
-NUMBER=`ls $DIR | wc -l`
 FPS=`echo "$NUMBER/$LENGTH" | bc`
 
 cd $DIR

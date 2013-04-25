@@ -3,7 +3,7 @@ PRGNAM=nal6
 SOURCE=prg6.c
 CPUTYPE=native
 
-CFLAGS=-O3 -march=$(CPUTYPE) -pipe\
+CFLAGS=-Ofast -march=$(CPUTYPE) -pipe\
        -Wall -pedantic-errors\
        -lm -lc -lgsl -lgslcblas -fopenmp\
        -I/usr/local/include\
