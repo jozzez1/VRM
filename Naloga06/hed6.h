@@ -240,7 +240,7 @@ void solver (ising * u)
 
 	time (&now);
 
-	printf ("Calculating!");
+	printf ("Calculating ...");
 	do
 	{
 		int r = 0;
