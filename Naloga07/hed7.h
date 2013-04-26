@@ -18,19 +18,24 @@ typedef struct
 	    M,
 	    jobs,
 	    I,
+	    mode,
 	    k,
 	    v;
 
 	double E,
 	       beta,
+	       db,
+	       bmin,
+	       bmax,
 	       epsilon,
-	       P,
-	       lambda;
+	       lambda,
+	       * xi;
 
 	FILE * fout,
 	     * fani;
 	
-	char * base_dir;
+	char * base,
+	     * file;
 
 	gsl_rng * rand;
 
@@ -43,17 +48,25 @@ init_harmonic (harmonic * h,
 		int N,
 		int M,
 		int v,
+		int mode,
 		double beta,
+		double db,
+		double bmin,
+		double bmax,
 		double epsilon,
 		double lambda)
 {
 	h->N        = N;
 	h->M        = M;
 	h->v        = v;
+	h->mode     = mode;
 	h->jobs     = jobs;
 	h->beta     = beta;
 	h->epsilon  = epsilon;
 	h->lambda   = lambda;
+	h->db       = db;
+	h->bmax     = bmax;
+	h->bmin     = bmin;
 
 	h->k = 0;
 	h->I = 0;
@@ -87,12 +100,13 @@ init_harmonic (harmonic * h,
 
 	/* we open our files/create animation directory */
 	char * regular_dump = (char *) malloc (20 * sizeof (double));
-	h->base_dir = (char *) malloc (20 * sizeof (double));
+	h->base = (char *) malloc (20 * sizeof (double));
+	h->file     = (char *) malloc (30 * sizeof (double));
 	
 	sprintf (regular_dump,  "HARMONIC-N%d.txt", h->N);
-	sprintf (h->base_dir, "animate-N%d", h->N);
+	sprintf (h->base, "animate-N%d", h->N);
 
-	mkdir (h->base_dir, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH );
+	mkdir (h->base, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH );
 
 	h->fout = fopen (regular_dump, "w");
 	free (regular_dump);
@@ -102,7 +116,7 @@ void
 destroy (harmonic * h)
 {
 	fclose (h->fout);
-	free (h->base_dir);
+	free (h->base);
 
 	for (int i = 0; i <= h->M-1; i++)
 		free (h->c[i]);
@@ -145,7 +159,7 @@ void overwrite (double * a, double * x, int N, int jobs)
 }
 
 // basic Metropolis stepper function
-int harmonic_step (harmonic * h)
+int step_harmonic (harmonic * h)
 {
 	// we select the state vector at random
 	int j = (int) h->M * gsl_rng_uniform (h->rand);
@@ -203,10 +217,114 @@ int harmonic_step (harmonic * h)
 	return accept;
 }
 
-// we concatenate these steps to obtain the solver
-void solver (harmonic * h)
+void dump_animate (harmonic * u)
 {
+	sprintf (u->file, "%s/%06d.txt", u->base, u->I);
+	u->fani = fopen (u->file, "w");
 
+	int i, j;
+	for (i = 0; i <= u->N-1; i++)
+	{
+		for (j = 0; j <= u->M-1; j++)
+			fprintf (u->fani, " %.3lf", u->c[j][i]);
+		fprintf (u->fani, "\n");
+	}
+
+	fclose (u->fani);
+}
+
+void dump (harmonic * u)
+{
+	dump_animate (u);
+}
+
+void update (harmonic * u)
+{
+	return;
+}
+
+void reset (harmonic * u)
+{
+	return;
+}
+
+// 'a' out of 'b' things are done, we started at time 'start'
+void progress_bar (int a, int b, time_t * start)
+{
+	time_t now;
+	double dsec,
+	       left;
+
+	if (start)
+	{
+		// we obtain current time
+		time (&now);
+
+		dsec = difftime (now, *start);
+		left = (b - a) * dsec/b;
+
+		printf ("ETA:% 3.2lfs | ", left);
+	}
+
+	int percent = 20 * a/b;
+	printf ("DONE: % 6d/%d (% 3.0lf%%) [", a, b, 100.0*a/b);
+	
+	for (int i = 0; i <= percent-1; i++)
+		printf ("=");
+	printf (">");
+	for (int i = percent; i <= 18; i++)
+		printf (" ");
+	printf ("]\n\033[F\033[J");
+}
+
+void solver (harmonic * u)
+{
+	u->beta = u->bmin;
+
+	int max = (u->mode + 1) * (u->bmax - u->bmin)/u->db;
+	time_t now;
+
+	time (&now);
+
+	printf ("Calculating ...\n");
+	do
+	{
+		int r = 0;
+		for (u->k = 1; u->k <= u->v; u->k++)
+		{
+			r += step_harmonic (u);
+			update (u);
+		}
+
+		dump (u);
+		reset (u);
+
+		printf ("rejected: %d\t", r);
+		progress_bar (u->I, max, &now);
+		u->I++;
+		u->beta += u->db;
+
+	} while (u->beta < u->bmax);
+
+	if (u->mode == 1)
+	{
+		do
+		{
+			int r = 0;
+			for (u->k = 1; u->k <= u->v; u->k++)
+			{
+				r += step_harmonic (u);
+				update (u);
+			}
+
+			dump (u);
+			reset (u);
+
+			progress_bar (u->I, max, &now);
+			u->I++;
+			u->beta -= u->db;
+		} while (u->beta > u->bmin);
+	}
 }
 
 #endif
