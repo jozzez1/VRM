@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <sys/stat.h>
 #include <math.h>
+#include <time.h>
 #include <gsl/gsl_rng.h>
 #include <gsl/gsl_randist.h>
 
@@ -49,7 +50,6 @@ init_harmonic (harmonic * h,
 		int M,
 		int v,
 		int mode,
-		double beta,
 		double db,
 		double bmin,
 		double bmax,
@@ -61,12 +61,12 @@ init_harmonic (harmonic * h,
 	h->v        = v;
 	h->mode     = mode;
 	h->jobs     = jobs;
-	h->beta     = beta;
 	h->epsilon  = epsilon;
 	h->lambda   = lambda;
 	h->db       = db;
 	h->bmax     = bmax;
 	h->bmin     = bmin;
+	h->beta     = bmin;
 
 	h->k = 0;
 	h->I = 0;
@@ -130,7 +130,7 @@ double factorP (double * a, double * b, harmonic * h)
 	       b2 = 0,
 	       ab = 0;
 
-	#pragma omp parallel shared (a2, b2, ab) num_threads (h->jobs)
+	#pragma omp parallel shared (a, b, a2, b2, ab) num_threads (h->jobs)
 	{
 		#pragma omp for reduction (+:a2, b2, ab)
 		for (int i = 0; i <= h->N-1; i++)
@@ -162,7 +162,8 @@ void overwrite (double * a, double * x, int N, int jobs)
 int step_harmonic (harmonic * h)
 {
 	// we select the state vector at random
-	int j = (int) h->M * gsl_rng_uniform (h->rand);
+	int j = (int) h->M * gsl_rng_uniform (h->rand),
+	    accept = 1;
 
 	if (j == h->M)
 		j--;
@@ -195,15 +196,13 @@ int step_harmonic (harmonic * h)
 	}
 
 	// (4) now we calculate the "stuff"
-	double P1p = factorP (h->c[j-1], xi, h),
-	       P2p = factorP (xi, h->c[j+1], h),
-	       P1  = factorP (h->c[j-1], h->c[j], h),
-	       P2  = factorP (h->c[j], h->c[j+1], h),
+	double P1p = factorP (h->c[(j+h->N-1)%h->N], xi, h),
+	       P2p = factorP (xi, h->c[(j+1)%h->N], h),
+	       P1  = factorP (h->c[(j-1+h->N)%h->N], h->c[j], h),
+	       P2  = factorP (h->c[j], h->c[(j+1)%h->N], h),
 	       p   = (P1p * P2p)/(P1 * P2);
 
 	// now we check if we'll accept the move
-	int accept = 1;
-
 	if (p < 1)
 	{
 		double test = gsl_rng_uniform (h->rand);

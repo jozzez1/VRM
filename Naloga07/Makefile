@@ -17,4 +17,4 @@ dbg:
 	$(CC) -o $(PRGNAM) $(SOURCE) $(CFLAGS) -g
 
 clean:
-	rm -rf J* ISING*
+	rm -rf animate* HARMONIC*
