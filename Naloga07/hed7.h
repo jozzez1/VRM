@@ -87,6 +87,8 @@ init_harmonic (harmonic * h,
 	for (int i = 0; i <= h->M-1; i++)
 		h->c[i] = (double *) malloc (h->N * sizeof (double));
 
+	h->xi = (double *) malloc (h->N * sizeof (double));
+
 	#pragma omp parallel num_threads (h->jobs)
 	{
 		/* we fill that thing, can be unnormalized */
@@ -130,15 +132,11 @@ double factorP (double * a, double * b, harmonic * h)
 	       b2 = 0,
 	       ab = 0;
 
-	#pragma omp parallel shared (a, b, a2, b2, ab) num_threads (h->jobs)
+	for (int i = 0; i <= h->N-1; i++)
 	{
-		#pragma omp for reduction (+:a2, b2, ab)
-		for (int i = 0; i <= h->N-1; i++)
-		{
-			a2 += a[i]*a[i];
-			b2 += b[i]*b[i];
-			ab += a[i]*b[i];
-		}
+		a2 += a[i]*a[i];
+		b2 += b[i]*b[i];
+		ab += a[i]*b[i];
 	}
 
 	double Tp = (1.0*h->M/h->beta) * (b2 + a2 - 2 * ab),
@@ -150,12 +148,8 @@ double factorP (double * a, double * b, harmonic * h)
 // we overwrite a with x
 void overwrite (double * a, double * x, int N, int jobs)
 {
-	#pragma omp parallel num_threads (jobs)
-	{
-		#pragma omp for
-		for (int i = 0; i <= N-1; i++)
-			a[i] = x[i];
-	}
+	for (int i = 0; i <= N-1; i++)
+		a[i] = x[i];
 }
 
 // basic Metropolis stepper function
@@ -170,34 +164,28 @@ int step_harmonic (harmonic * h)
 
 	// we compute the difference vector:
 	// (1) we allocate it, and prepare normalization S
-	double * xi = (double *) malloc (h->N * sizeof (double)),
-	       S    = 0;
+	double S = 0;
 
-	#pragma omp parallel shared (xi, S) num_threads (h->jobs)
+	// (2) so now we set the variables ...
+	for (int i = 0; i <= h->N-1; i++)
 	{
-		// (2) so now we set the variables ...
-		#pragma omp for reduction (+:S)
-		for (int i = 0; i <= h->N-1; i++)
-		{
-			xi[i] = gsl_ran_gaussian_ziggurat (h->rand, 1.0/h->N);
-			S += xi[i] * xi[i];
-		}
+		h->xi[i] = gsl_ran_gaussian_ziggurat (h->rand, 1.0/h->N);
+		S += h->xi[i] * h->xi[i];
+	}
 
-		// we want it to have length epsilon
-		S = sqrt (S)/h->epsilon;
+	// we want it to have length epsilon
+	S = sqrt (S)/h->epsilon;
 
-		// (3) we normalize it accordingly and update some vectors
-		#pragma omp for
-		for (int i = 0; i <= h->N-1; i++)
-		{
-			xi[i] /= S;
-			xi[i] += h->c[j][i];
-		}
+	// (3) we normalize it accordingly and update some vectors
+	for (int i = 0; i <= h->N-1; i++)
+	{
+		h->xi[i] /= S;
+		h->xi[i] += h->c[j][i];
 	}
 
 	// (4) now we calculate the "stuff"
-	double P1p = factorP (h->c[(j+h->N-1)%h->N], xi, h),
-	       P2p = factorP (xi, h->c[(j+1)%h->N], h),
+	double P1p = factorP (h->c[(j+h->N-1)%h->N], h->xi, h),
+	       P2p = factorP (h->xi, h->c[(j+1)%h->N], h),
 	       P1  = factorP (h->c[(j-1+h->N)%h->N], h->c[j], h),
 	       P2  = factorP (h->c[j], h->c[(j+1)%h->N], h),
 	       p   = (P1p * P2p)/(P1 * P2);
@@ -211,7 +199,7 @@ int step_harmonic (harmonic * h)
 	}
 
 	if (accept)
-		overwrite (h->c[j], xi, h->N, h->jobs);
+		overwrite (h->c[j], h->xi, h->N, h->jobs);
 
 	return accept;
 }
@@ -298,7 +286,7 @@ void solver (harmonic * u)
 		dump (u);
 		reset (u);
 
-		printf ("rejected: %d\t", r);
+		printf ("rejected: %d\t", u->v - r);
 		progress_bar (u->I, max, &now);
 		u->I++;
 		u->beta += u->db;
