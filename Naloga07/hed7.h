@@ -89,15 +89,11 @@ init_harmonic (harmonic * h,
 
 	h->xi = (double *) malloc (h->N * sizeof (double));
 
-	#pragma omp parallel num_threads (h->jobs)
+	/* we fill that thing, can be unnormalized */
+	for (int j = 0; j <= h->M-1; j++)
 	{
-		/* we fill that thing, can be unnormalized */
-		#pragma omp for
-		for (int j = 0; j <= h->M-1; j++)
-		{
-			for (int i = 0; i <= h->N - 1; i++)
-				h->c[j][i] = gsl_ran_gaussian_ziggurat (h->rand, 1.0/h->N);
-		}
+		for (int i = 0; i <= h->N - 1; i++)
+			h->c[j][i] = gsl_ran_gaussian_ziggurat (h->rand, 1.0/h->N);
 	}
 
 	/* we open our files/create animation directory */
@@ -258,7 +254,8 @@ void progress_bar (int a, int b, time_t * start)
 	
 	for (int i = 0; i <= percent-1; i++)
 		printf ("=");
-	printf (">");
+	if (round (100.0 * a/b) != 100)
+		printf (">");
 	for (int i = percent; i <= 18; i++)
 		printf (" ");
 	printf ("]\n\033[F\033[J");
@@ -267,11 +264,7 @@ void progress_bar (int a, int b, time_t * start)
 void solver (harmonic * u)
 {
 	u->beta = u->bmin;
-
 	int max = (u->mode + 1) * (u->bmax - u->bmin)/u->db;
-	time_t now;
-
-	time (&now);
 
 	printf ("Calculating ...\n");
 	do
@@ -286,8 +279,8 @@ void solver (harmonic * u)
 		dump (u);
 		reset (u);
 
-		printf ("rejected: %d\t", u->v - r);
-		progress_bar (u->I, max, &now);
+		printf ("r: % 6d/%d  ", u->v - r, u->v);
+		progress_bar (u->I, max, NULL);
 		u->I++;
 		u->beta += u->db;
 
@@ -307,11 +300,46 @@ void solver (harmonic * u)
 			dump (u);
 			reset (u);
 
-			progress_bar (u->I, max, &now);
+			printf ("r: %d/%d  ", u->v - r, u->v);
+			progress_bar (u->I, max, NULL);
 			u->I++;
 			u->beta -= u->db;
 		} while (u->beta > u->bmin);
 	}
+}
+
+void mencoder (harmonic * u, int length)
+{
+	int counter = 0;
+	char * stuff;
+	#pragma omp parallel shared (counter) private (stuff) num_threads (u->jobs)
+	{
+		#pragma omp for
+		for (int k = 0; k <= u->I-1; k++)
+		{
+			double b = k*u->db + u->bmin;
+			if (b > u->bmax)
+				b = 2*u->bmax - b;
+			double T = 1.0/b;
+
+			stuff = (char *) malloc (40 * sizeof (char));
+			sprintf (stuff, "./animate.sh %s %06d %d %lf",
+					u->base, k, u->N, T);
+			system (stuff);
+			free (stuff);
+
+			#pragma omp critical
+			{
+				counter++;
+				progress_bar (counter, u->I, NULL);
+			}
+		}
+	}
+
+	stuff = (char *) malloc (60 * sizeof (char));
+	sprintf (stuff, "./anime.sh %s %d %d %d", u->base, 1, length, u->I);
+	system (stuff);
+	free (stuff);
 }
 
 #endif
