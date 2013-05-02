@@ -24,7 +24,7 @@ int main (int argc, char ** argv)
 
 	struct option longopts[] =
 	{
-		{ "mode",    required_argument,      NULL,       'm' },
+		{ "return",  no_argument,            &mode,        1 },
 		{ "jobs",    required_argument,      NULL,       'j' },
 		{ "size-M",  required_argument,      NULL,       'M' },
 		{ "size-N",  required_argument,      NULL,       'N' },
@@ -39,13 +39,10 @@ int main (int argc, char ** argv)
 		{ NULL,      0,                      NULL,         0 }
 	};
 
-	while ((arg = getopt_long (argc, argv, "m:j:M:N:v:B:b:d:e:L:l:h", longopts, NULL)) != -1)
+	while ((arg = getopt_long (argc, argv, "j:M:N:v:B:b:d:e:L:l:h", longopts, NULL)) != -1)
 	{
 		switch (arg)
 		{
-			case 'm':
-				mode = atoi (optarg);
-				break;
 			case 'j':
 				jobs = atoi (optarg);
 				break;
@@ -81,7 +78,7 @@ int main (int argc, char ** argv)
 				printf ("List of commands:\n");
 				printf ("longopt    shortopt   default   description\n");
 				printf ("===========================================\n");
-				printf ("--mode,    -m:        0         mode\n");
+				printf ("--return,               0         return back on the T scale\n");
 				printf ("--jobs,    -j:        8         jobs\n");
 				printf ("--size-M,  -M:        100       M\n");
 				printf ("--size-N,  -N:        100       N\n");

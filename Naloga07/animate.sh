@@ -17,6 +17,7 @@ echo "set terminal jpeg enhanced font \"$font,12\" size 550,400;
   set output \"$dir/$base.jpg\";
   set xrange [0:$range];
   set yrange [0:$range];
+  set cbrange [-1:1];
   plot \"$dir/$base.txt\" matrix w image title ''" | gnuplot
 
 exit 0

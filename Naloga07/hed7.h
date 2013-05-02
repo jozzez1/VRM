@@ -24,10 +24,10 @@ typedef struct
 	    v;
 
 	double E,
-	       beta,
-	       db,
-	       bmin,
-	       bmax,
+	       T,
+	       dT,
+	       Tmin,
+	       Tmax,
 	       epsilon,
 	       lambda,
 	       * xi;
@@ -50,9 +50,9 @@ init_harmonic (harmonic * h,
 		int M,
 		int v,
 		int mode,
-		double db,
-		double bmin,
-		double bmax,
+		double dT,
+		double Tmin,
+		double Tmax,
 		double epsilon,
 		double lambda)
 {
@@ -63,10 +63,10 @@ init_harmonic (harmonic * h,
 	h->jobs     = jobs;
 	h->epsilon  = epsilon;
 	h->lambda   = lambda;
-	h->db       = db;
-	h->bmax     = bmax;
-	h->bmin     = bmin;
-	h->beta     = bmin;
+	h->dT       = dT;
+	h->Tmax     = Tmax;
+	h->Tmin     = Tmin;
+	h->T        = Tmin;
 
 	h->k = 0;
 	h->I = 0;
@@ -135,8 +135,8 @@ double factorP (double * a, double * b, harmonic * h)
 		ab += a[i]*b[i];
 	}
 
-	double Tp = (1.0*h->M/h->beta) * (b2 + a2 - 2 * ab),
-	       Vp = (h->beta/h->M) * a2 * (0.5 + h->lambda*a2);
+	double Tp = (h->M*h->T) * (b2 + a2 - 2 * ab),
+	       Vp = (1.0/(h->M*h->T)) * a2 * (0.5 + h->lambda*a2);
 
 	return exp ((-1) * (Tp + Vp));
 }
@@ -263,8 +263,8 @@ void progress_bar (int a, int b, time_t * start)
 
 void solver (harmonic * u)
 {
-	u->beta = u->bmin;
-	int max = (u->mode + 1) * (u->bmax - u->bmin)/u->db;
+	u->T = u->Tmax;
+	int max = (u->mode + 1) * (u->Tmax - u->Tmin)/u->dT;
 
 	printf ("Calculating ...\n");
 	do
@@ -280,11 +280,11 @@ void solver (harmonic * u)
 		reset (u);
 
 		printf ("r: % 6d/%d  ", u->v - r, u->v);
-		progress_bar (u->I, max, NULL);
+		progress_bar (u->I-1, max, NULL);
 		u->I++;
-		u->beta += u->db;
+		u->T += u->dT;
 
-	} while (u->beta < u->bmax);
+	} while (u->T < u->Tmax);
 
 	if (u->mode == 1)
 	{
@@ -301,10 +301,10 @@ void solver (harmonic * u)
 			reset (u);
 
 			printf ("r: %d/%d  ", u->v - r, u->v);
-			progress_bar (u->I, max, NULL);
+			progress_bar (u->I-2, max, NULL);
 			u->I++;
-			u->beta -= u->db;
-		} while (u->beta > u->bmin);
+			u->T -= u->dT;
+		} while (u->T > u->Tmin);
 	}
 }
 
@@ -315,12 +315,11 @@ void mencoder (harmonic * u, int length)
 	#pragma omp parallel shared (counter) private (stuff) num_threads (u->jobs)
 	{
 		#pragma omp for
-		for (int k = 0; k <= u->I-1; k++)
+		for (int k = 0; k <= u->I-2; k++)
 		{
-			double b = k*u->db + u->bmin;
-			if (b > u->bmax)
-				b = 2*u->bmax - b;
-			double T = 1.0/b;
+			double T = k*u->dT + u->Tmin;
+			if (T > u->Tmax)
+				T = 2*u->Tmax - T;
 
 			stuff = (char *) malloc (40 * sizeof (char));
 			sprintf (stuff, "./animate.sh %s %06d %d %lf",
@@ -331,7 +330,7 @@ void mencoder (harmonic * u, int length)
 			#pragma omp critical
 			{
 				counter++;
-				progress_bar (counter, u->I, NULL);
+				progress_bar (counter, u->I-21, NULL);
 			}
 		}
 	}
