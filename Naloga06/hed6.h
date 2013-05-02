@@ -13,9 +13,6 @@
 #include <gsl/gsl_rng.h>
 
 
-// threading for plotter
-#include <omp.h> // !!! requires the GNU Compiler Collection (gcc) !!! -- already in the make file
-
 static const double TC = 2.269185314;
 
 /* we start over ... */
@@ -104,6 +101,7 @@ int get_spin (int * g, int N, int i, int j)
 
 void destroy_ising (ising * u)
 {
+	gsl_rng_free (u->rand);
 	fclose (u->fout);
 	free (u->base);
 	free (u->file);
@@ -132,7 +130,6 @@ int step_ising (ising * u)
 	    s4   = get_spin (u->g, u->n, (i + u->n - 1) % u->n, j);
 
 	u->dE = 2*spin * (u->J * (s1 + s2 + s3 + s4) + u->h);
-	u->m += (-2)*spin;
 
 	/* now we make "The Drawing of the Three (TM)" */
 	if (u->dE < 0)
@@ -151,6 +148,9 @@ int step_ising (ising * u)
 			re    = 1;
 		}
 	}
+
+	if (re == 0)
+		u->m -= 2*spin;
 
 	return re;
 }
@@ -240,7 +240,7 @@ void solver (ising * u)
 
 	time (&now);
 
-	printf ("Calculating ...");
+	printf ("Calculating ...\n");
 	do
 	{
 		int r = 0;
@@ -278,6 +278,7 @@ void solver (ising * u)
 			u->T -= u->dT;
 		} while (u->T > u->Tmin);
 	}
+	printf ("\033[J Done!");
 }
 
 #endif
