@@ -24,10 +24,10 @@ typedef struct
 	    v;
 
 	double E,
-	       beta,
-	       db,
-	       bmin,
-	       bmax,
+	       T,
+	       dT,
+	       Tmin,
+	       Tmax,
 	       epsilon,
 	       lambda,
 	       * xi;
@@ -50,9 +50,9 @@ init_harmonic (harmonic * h,
 		int M,
 		int v,
 		int mode,
-		double db,
-		double bmin,
-		double bmax,
+		double dT,
+		double Tmin,
+		double Tmax,
 		double epsilon,
 		double lambda)
 {
@@ -63,10 +63,10 @@ init_harmonic (harmonic * h,
 	h->jobs     = jobs;
 	h->epsilon  = epsilon;
 	h->lambda   = lambda;
-	h->db       = db;
-	h->bmax     = bmax;
-	h->bmin     = bmin;
-	h->beta     = bmin;
+	h->dT       = dT;
+	h->Tmax     = Tmax;
+	h->Tmin     = Tmin;
+	h->T        = Tmin;
 
 	h->k = 0;
 	h->I = 0;
@@ -89,15 +89,11 @@ init_harmonic (harmonic * h,
 
 	h->xi = (double *) malloc (h->N * sizeof (double));
 
-	#pragma omp parallel num_threads (h->jobs)
+	/* we fill that thing, can be unnormalized */
+	for (int j = 0; j <= h->M-1; j++)
 	{
-		/* we fill that thing, can be unnormalized */
-		#pragma omp for
-		for (int j = 0; j <= h->M-1; j++)
-		{
-			for (int i = 0; i <= h->N - 1; i++)
-				h->c[j][i] = gsl_ran_gaussian_ziggurat (h->rand, 1.0/h->N);
-		}
+		for (int i = 0; i <= h->N - 1; i++)
+			h->c[j][i] = gsl_ran_gaussian_ziggurat (h->rand, 1.0/h->N);
 	}
 
 	/* we open our files/create animation directory */
@@ -119,6 +115,10 @@ destroy (harmonic * h)
 {
 	fclose (h->fout);
 	free (h->base);
+	free (h->file);
+	free (h->xi);
+
+	gsl_rng_free (h->rand);
 
 	for (int i = 0; i <= h->M-1; i++)
 		free (h->c[i]);
@@ -139,8 +139,8 @@ double factorP (double * a, double * b, harmonic * h)
 		ab += a[i]*b[i];
 	}
 
-	double Tp = (1.0*h->M/h->beta) * (b2 + a2 - 2 * ab),
-	       Vp = (h->beta/h->M) * a2 * (0.5 + h->lambda*a2);
+	double Tp = (h->M*h->T) * (b2 + a2 - 2 * ab),
+	       Vp = (1.0/(h->M*h->T)) * a2 * (0.5 + h->lambda*a2);
 
 	return exp ((-1) * (Tp + Vp));
 }
@@ -254,11 +254,12 @@ void progress_bar (int a, int b, time_t * start)
 	}
 
 	int percent = 20 * a/b;
-	printf ("DONE: % 6d/%d (% 3.0lf%%) [", a, b, 100.0*a/b);
+	printf ("DONE: % 6d/%d (% 2d%%) [", a, b, (int) round (100.0*a/b));
 	
 	for (int i = 0; i <= percent-1; i++)
 		printf ("=");
-	printf (">");
+	if (round (100.0 * a/b) != 100)
+		printf (">");
 	for (int i = percent; i <= 18; i++)
 		printf (" ");
 	printf ("]\n\033[F\033[J");
@@ -266,12 +267,8 @@ void progress_bar (int a, int b, time_t * start)
 
 void solver (harmonic * u)
 {
-	u->beta = u->bmin;
-
-	int max = (u->mode + 1) * (u->bmax - u->bmin)/u->db;
-	time_t now;
-
-	time (&now);
+	u->T = u->Tmin;
+	int max = (u->mode + 1) * (u->Tmax - u->Tmin)/u->dT;
 
 	printf ("Calculating ...\n");
 	do
@@ -286,12 +283,12 @@ void solver (harmonic * u)
 		dump (u);
 		reset (u);
 
-		printf ("rejected: %d\t", u->v - r);
-		progress_bar (u->I, max, &now);
+		printf ("r: % 6d/%d  ", u->v - r, u->v);
+		progress_bar (u->I-1, max, NULL);
 		u->I++;
-		u->beta += u->db;
+		u->T += u->dT;
 
-	} while (u->beta < u->bmax);
+	} while (u->T < u->Tmax);
 
 	if (u->mode == 1)
 	{
@@ -307,11 +304,48 @@ void solver (harmonic * u)
 			dump (u);
 			reset (u);
 
-			progress_bar (u->I, max, &now);
+			printf ("r: % 6d/%d  ", u->v - r, u->v);
+			progress_bar (u->I-2, max, NULL);
 			u->I++;
-			u->beta -= u->db;
-		} while (u->beta > u->bmin);
+			u->T -= u->dT;
+		} while (u->T > u->Tmin);
 	}
 }
 
+void mencoder (harmonic * u, int length)
+{
+	int counter = 0;
+	char * stuff;
+	#pragma omp parallel shared (counter) private (stuff) num_threads (u->jobs)
+	{
+		#pragma omp for
+		for (int k = 0; k <= u->I-1; k++)
+		{
+			double T = k*u->dT + u->Tmin;
+			if (T > u->Tmax)
+				T = 2*u->Tmax - T;
+
+			stuff = (char *) malloc (40 * sizeof (char));
+			sprintf (stuff, "./animate.sh %s %06d %d %lf",
+					u->base, k, u->N, T);
+			system (stuff);
+			free (stuff);
+
+			#pragma omp critical
+			{
+				counter++;
+				progress_bar (counter, u->I-1, NULL);
+			}
+		}
+	}
+
+	printf ("Done!");
+
+	stuff = (char *) malloc (60 * sizeof (char));
+	sprintf (stuff, "./anime.sh %s %d %d %d", u->base, 1, length, u->I);
+	system (stuff);
+	free (stuff);
+}
+
 #endif
+

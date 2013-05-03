@@ -18,4 +18,4 @@ dbg:
 	$(CC) -o $(PRGNAM) $(SOURCE) $(CFLAGS) -g
 
 clean:
-	rm -rf animate* HARMONIC*
+	rm -rf animate-* HARMONIC*
