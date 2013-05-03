@@ -1,9 +1,10 @@
-CC=gcc48
+CC=gcc
 PRGNAM=nal7
 SOURCE=prg7.c
 CPUTYPE=native
+COPTFLAG?=-O3
 
-CFLAGS=-Ofast -march=$(CPUTYPE) -pipe\
+CFLAGS=$(COPTFLAG) -march=$(CPUTYPE) -pipe\
        -Wall -pedantic-errors\
        -lm -lc -lgsl -lgslcblas -fopenmp\
        -I/usr/local/include\
