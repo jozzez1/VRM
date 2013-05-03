@@ -115,6 +115,10 @@ destroy (harmonic * h)
 {
 	fclose (h->fout);
 	free (h->base);
+	free (h->file);
+	free (h->xi);
+
+	gsl_rng_free (h->rand);
 
 	for (int i = 0; i <= h->M-1; i++)
 		free (h->c[i]);
@@ -250,7 +254,7 @@ void progress_bar (int a, int b, time_t * start)
 	}
 
 	int percent = 20 * a/b;
-	printf ("DONE: % 6d/%d (% 3.0lf%%) [", a, b, 100.0*a/b);
+	printf ("DONE: % 6d/%d (% 2d%%) [", a, b, (int) round (100.0*a/b));
 	
 	for (int i = 0; i <= percent-1; i++)
 		printf ("=");
@@ -263,7 +267,7 @@ void progress_bar (int a, int b, time_t * start)
 
 void solver (harmonic * u)
 {
-	u->T = u->Tmax;
+	u->T = u->Tmin;
 	int max = (u->mode + 1) * (u->Tmax - u->Tmin)/u->dT;
 
 	printf ("Calculating ...\n");
@@ -300,7 +304,7 @@ void solver (harmonic * u)
 			dump (u);
 			reset (u);
 
-			printf ("r: %d/%d  ", u->v - r, u->v);
+			printf ("r: % 6d/%d  ", u->v - r, u->v);
 			progress_bar (u->I-2, max, NULL);
 			u->I++;
 			u->T -= u->dT;
@@ -315,7 +319,7 @@ void mencoder (harmonic * u, int length)
 	#pragma omp parallel shared (counter) private (stuff) num_threads (u->jobs)
 	{
 		#pragma omp for
-		for (int k = 0; k <= u->I-2; k++)
+		for (int k = 0; k <= u->I-1; k++)
 		{
 			double T = k*u->dT + u->Tmin;
 			if (T > u->Tmax)
@@ -330,10 +334,12 @@ void mencoder (harmonic * u, int length)
 			#pragma omp critical
 			{
 				counter++;
-				progress_bar (counter, u->I-21, NULL);
+				progress_bar (counter, u->I-1, NULL);
 			}
 		}
 	}
+
+	printf ("Done!");
 
 	stuff = (char *) malloc (60 * sizeof (char));
 	sprintf (stuff, "./anime.sh %s %d %d %d", u->base, 1, length, u->I);
@@ -342,3 +348,4 @@ void mencoder (harmonic * u, int length)
 }
 
 #endif
+
