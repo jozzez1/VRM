@@ -204,6 +204,23 @@ int step_harmonic (harmonic * h)
 	return accept;
 }
 
+void energy_start (harmonic * u)
+{
+	for (int i = 0; i <= u->M-1; i++)
+	{
+		double q1  = 0,
+		       q2  = 0,
+		       q12 = 0;
+
+		for (int j = 0; j <= u->N-1; j++)
+		{
+			q1  += u->c[i][j] * u->c[i][j];
+			q2  += u->c[(i+1)%u->N][j] * u->c[(i+1)%u->N][j];
+			q12 += u->c[(i+1)%u->N][j] * u->c[i][j];
+		}
+	}
+}
+
 void dump_animate (harmonic * u)
 {
 	sprintf (u->file, "%s/%06d.txt", u->base, u->I);
@@ -310,41 +327,6 @@ void solver (harmonic * u)
 			u->T -= u->dT;
 		} while (u->T > u->Tmin);
 	}
-}
-
-void mencoder (harmonic * u, int length)
-{
-	int counter = 0;
-	char * stuff;
-	#pragma omp parallel shared (counter) private (stuff) num_threads (u->jobs)
-	{
-		#pragma omp for
-		for (int k = 0; k <= u->I-1; k++)
-		{
-			double T = k*u->dT + u->Tmin;
-			if (T > u->Tmax)
-				T = 2*u->Tmax - T;
-
-			stuff = (char *) malloc (40 * sizeof (char));
-			sprintf (stuff, "./animate.sh %s %06d %d %lf",
-					u->base, k, u->N, T);
-			system (stuff);
-			free (stuff);
-
-			#pragma omp critical
-			{
-				counter++;
-				progress_bar (counter, u->I-1, NULL);
-			}
-		}
-	}
-
-	printf ("Done!");
-
-	stuff = (char *) malloc (60 * sizeof (char));
-	sprintf (stuff, "./anime.sh %s %d %d %d", u->base, 1, length, u->I);
-	system (stuff);
-	free (stuff);
 }
 
 #endif

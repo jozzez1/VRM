@@ -29,9 +29,9 @@ int main (int argc, char ** argv)
 		{ "size-M",  required_argument,      NULL,       'M' },
 		{ "size-N",  required_argument,      NULL,       'N' },
 		{ "wait-v",  required_argument,      NULL,       'v' },
-		{ "bmax",    required_argument,      NULL,       'B' },
-		{ "bmin",    required_argument,      NULL,       'b' },
-		{ "db",      required_argument,      NULL,       'd' },
+		{ "Tmax",    required_argument,      NULL,       'T' },
+		{ "Tmin",    required_argument,      NULL,       't' },
+		{ "dT",      required_argument,      NULL,       'd' },
 		{ "eps",     required_argument,      NULL,       'e' },
 		{ "lambda",  required_argument,      NULL,       'L' },
 		{ "length",  required_argument,      NULL,       'l' },
@@ -39,7 +39,7 @@ int main (int argc, char ** argv)
 		{ NULL,      0,                      NULL,         0 }
 	};
 
-	while ((arg = getopt_long (argc, argv, "j:M:N:v:B:b:d:e:L:l:h", longopts, NULL)) != -1)
+	while ((arg = getopt_long (argc, argv, "j:M:N:v:T:t:d:e:L:l:h", longopts, NULL)) != -1)
 	{
 		switch (arg)
 		{
@@ -83,9 +83,9 @@ int main (int argc, char ** argv)
 				printf ("--size-M,  -M:        100       M\n");
 				printf ("--size-N,  -N:        100       N\n");
 				printf ("--wait-v,  -v:        3000      v\n");
-				printf ("--bmax,    -B:        5         max beta\n");
-				printf ("--bmin,    -b:        0         min beta\n");
-				printf ("--db,      -d:        0.001     delta beta\n");
+				printf ("--Tmax,    -T:        5         max beta\n");
+				printf ("--Tmin,    -t:        0         min beta\n");
+				printf ("--dT,      -d:        0.001     delta beta\n");
 				printf ("--eps,     -e:        0.005     epsilon\n");
 				printf ("--lambda,  -L:        1         lambda\n");
 				printf ("--length,  -l:        12        length in seconds\n");
@@ -94,12 +94,45 @@ int main (int argc, char ** argv)
 		}
 	}
 
-	harmonic * h = (harmonic *) malloc (sizeof (harmonic));
-	init_harmonic (h, jobs, N, M, v, mode, db, bmin, bmax, epsilon, lambda);
+	harmonic * u = (harmonic *) malloc (sizeof (harmonic));
+	init_harmonic (u, jobs, N, M, v, mode, db, bmin, bmax, epsilon, lambda);
 
-	solver (h);
-	mencoder (h, length);
-	destroy (h);
+	solver (u);
+	printf ("Plotting ...\n");
+
+	int counter = 0;
+	char * stuff = malloc (40 * sizeof (char));
+	#pragma omp parallel shared (counter) private (stuff) num_threads (u->jobs)
+	{
+		#pragma omp for
+		for (int k = 0; k <= u->I-1; k++)
+		{
+			double T = k*u->dT + u->Tmin;
+			if (T > u->Tmax)
+				T = 2*u->Tmax - T;
+
+			stuff = (char *) malloc (40 * sizeof (char));
+			sprintf (stuff, "./animate.sh %s %06d %d %lf",
+					u->base, k, u->N, T);
+			system (stuff);
+			free (stuff);
+
+			#pragma omp critical
+			{
+				counter++;
+				progress_bar (counter, u->I, NULL);
+			}
+		}
+	}
+
+	printf ("Done!\n");
+
+	stuff = (char *) malloc (60 * sizeof (char));
+	sprintf (stuff, "./anime.sh %s %d %d %d", u->base, 1, length, u->I);
+	system (stuff);
+	free (stuff);
+
+	destroy (u);
 
 	return 0;
 }
