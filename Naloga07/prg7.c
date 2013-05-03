@@ -120,7 +120,7 @@ int main (int argc, char ** argv)
 			#pragma omp critical
 			{
 				counter++;
-				progress_bar (counter, u->I, NULL);
+				progress_bar (counter, u->I-1, NULL);
 			}
 		}
 	}

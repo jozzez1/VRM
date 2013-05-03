@@ -43,6 +43,30 @@ typedef struct
 	double ** c;
 } harmonic;
 
+void energy_start (harmonic * u)
+{
+	for (int i = 0; i <= u->M-1; i++)
+	{
+		double q1  = 0,
+		       q2  = 0,
+		       q12 = 0;
+
+		for (int j = 0; j <= u->N-1; j++)
+		{
+			q1  += u->c[i][j] * u->c[i][j];
+			q2  += u->c[(i+1)%u->N][j] * u->c[(i+1)%u->N][j];
+			q12 += u->c[(i+1)%u->N][j] * u->c[i][j];
+		}
+
+		double En = (1.0/u->M) * q1*(0.5 + u->lambda * q1);
+		En -= 0.5*u->T*u->T*u->M*(q1 + q2 - 2*q12);
+		En /= u->N;
+		En += 2*u->M*u->T;
+
+		u->E += (1.0 - 1.0/u->k)*u->E + (1.0/u->k)*En;
+	}
+}
+
 void
 init_harmonic (harmonic * h,
 		int jobs,
@@ -102,12 +126,15 @@ init_harmonic (harmonic * h,
 	h->file     = (char *) malloc (30 * sizeof (double));
 	
 	sprintf (regular_dump,  "HARMONIC-N%d.txt", h->N);
-	sprintf (h->base, "animate-N%d", h->N);
+	sprintf (h->base, "video-N%d", h->N);
 
 	mkdir (h->base, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH );
 
 	h->fout = fopen (regular_dump, "w");
 	free (regular_dump);
+
+	/* we initialize the energy */
+	h->E = 0;
 }
 
 void
@@ -204,21 +231,10 @@ int step_harmonic (harmonic * h)
 	return accept;
 }
 
-void energy_start (harmonic * u)
+void dump_regular (harmonic * u)
 {
-	for (int i = 0; i <= u->M-1; i++)
-	{
-		double q1  = 0,
-		       q2  = 0,
-		       q12 = 0;
-
-		for (int j = 0; j <= u->N-1; j++)
-		{
-			q1  += u->c[i][j] * u->c[i][j];
-			q2  += u->c[(i+1)%u->N][j] * u->c[(i+1)%u->N][j];
-			q12 += u->c[(i+1)%u->N][j] * u->c[i][j];
-		}
-	}
+	fprintf (u->fout, "% 12e % 12e\n",
+			u->T, u->E);
 }
 
 void dump_animate (harmonic * u)
@@ -240,16 +256,17 @@ void dump_animate (harmonic * u)
 void dump (harmonic * u)
 {
 	dump_animate (u);
+	dump_regular (u);
 }
 
 void update (harmonic * u)
 {
-	return;
+	energy_start (u);
 }
 
 void reset (harmonic * u)
 {
-	return;
+	u->E = 0;
 }
 
 // 'a' out of 'b' things are done, we started at time 'start'
@@ -316,6 +333,7 @@ void solver (harmonic * u)
 			{
 				r += step_harmonic (u);
 				update (u);
+				energy_start (u);
 			}
 
 			dump (u);
