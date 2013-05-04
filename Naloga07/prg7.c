@@ -14,6 +14,7 @@ int main (int argc, char ** argv)
 	    M          = 100,
 	    v          = 3000,
 	    length     = 12,
+	    animate    = 1,
 	    arg;
 
 	double bmax    = 5,
@@ -36,6 +37,7 @@ int main (int argc, char ** argv)
 		{ "lambda",  required_argument,      NULL,       'L' },
 		{ "length",  required_argument,      NULL,       'l' },
 		{ "help",    no_argument,            NULL,       'h' },
+		{ "no-ani", no_argument,             &animate,     0 },
 		{ NULL,      0,                      NULL,         0 }
 	};
 
@@ -55,10 +57,10 @@ int main (int argc, char ** argv)
 			case 'v':
 				v    = atoi (optarg);
 				break;
-			case 'B':
+			case 'T':
 				bmax = atof (optarg);
 				break;
-			case 'b':
+			case 't':
 				bmin = atof (optarg);
 				break;
 			case 'd':
@@ -78,7 +80,7 @@ int main (int argc, char ** argv)
 				printf ("List of commands:\n");
 				printf ("longopt    shortopt   default   description\n");
 				printf ("===========================================\n");
-				printf ("--return,               0         return back on the T scale\n");
+				printf ("--return,             0         return back on the T scale\n");
 				printf ("--jobs,    -j:        8         jobs\n");
 				printf ("--size-M,  -M:        100       M\n");
 				printf ("--size-N,  -N:        100       N\n");
@@ -90,6 +92,7 @@ int main (int argc, char ** argv)
 				printf ("--lambda,  -L:        1         lambda\n");
 				printf ("--length,  -l:        12        length in seconds\n");
 				printf ("--help,    -h                   prints this list\n");
+				printf ("--no-ani,                       don't animate\n");
 				exit (EXIT_SUCCESS);
 		}
 	}
@@ -98,39 +101,42 @@ int main (int argc, char ** argv)
 	init_harmonic (u, jobs, N, M, v, mode, db, bmin, bmax, epsilon, lambda);
 
 	solver (u);
-	printf ("Plotting ...\n");
 
-	int counter = 0;
-	char * stuff = malloc (40 * sizeof (char));
-	#pragma omp parallel shared (counter) private (stuff) num_threads (u->jobs)
+	if (animate == 1)
 	{
-		#pragma omp for
-		for (int k = 0; k <= u->I-1; k++)
+		printf ("Plotting ...\n");
+		int counter = 0;
+		char * stuff = malloc (40 * sizeof (char));
+		#pragma omp parallel shared (counter) private (stuff) num_threads (u->jobs)
 		{
-			double T = k*u->dT + u->Tmin;
-			if (T > u->Tmax)
-				T = 2*u->Tmax - T;
-
-			stuff = (char *) malloc (40 * sizeof (char));
-			sprintf (stuff, "./animate.sh %s %06d %d %lf",
-					u->base, k, u->N, T);
-			system (stuff);
-			free (stuff);
-
-			#pragma omp critical
+			#pragma omp for
+			for (int k = 0; k <= u->I-1; k++)
 			{
-				counter++;
-				progress_bar (counter, u->I-1, NULL);
+				double T = k*u->dT + u->Tmin;
+				if (T > u->Tmax)
+					T = 2*u->Tmax - T;
+	
+				stuff = (char *) malloc (40 * sizeof (char));
+				sprintf (stuff, "./animate.sh %s %06d %d %lf",
+						u->base, k, u->N, T);
+				system (stuff);
+				free (stuff);
+	
+				#pragma omp critical
+				{
+					counter++;
+					progress_bar (counter, u->I-1, NULL);
+				}
 			}
 		}
+
+		printf ("Done!\n");
+	
+		stuff = (char *) malloc (60 * sizeof (char));
+		sprintf (stuff, "./anime.sh %s %d %d %d", u->base, 1, length, u->I);
+		system (stuff);
+		free (stuff);
 	}
-
-	printf ("Done!\n");
-
-	stuff = (char *) malloc (60 * sizeof (char));
-	sprintf (stuff, "./anime.sh %s %d %d %d", u->base, 1, length, u->I);
-	system (stuff);
-	free (stuff);
 
 	destroy (u);
 
