@@ -4,7 +4,10 @@
 #include <stdio.h>
 #include <getopt.h>
 #include <stdlib.h>
+#include <omp.h>  // requires the gcc compiler
 #include "hed6.h"
+
+ 
 
 int main (int argc, char ** argv)
 {
@@ -34,7 +37,7 @@ int main (int argc, char ** argv)
 		{ "length",   required_argument,     NULL,    'l' },
 		{ "jobs",     required_argument,     NULL,    'j' },
 		{ "no-save",  no_argument,           NULL,      2 },
-		{ "anneal",     no_argument,         NULL,    'a' },
+		{ "anneal",   no_argument,           NULL,    'a' },
 		{ "help",     no_argument,           NULL,      1 },
 	};
 
@@ -123,15 +126,13 @@ int main (int argc, char ** argv)
 					u->base, k, u->n, T);
 			system (stuff);
 			free (stuff);
-			#pragma omp atomic
-			counter++;
 			#pragma omp critical
-			progress_bar (counter, u->I, &now);
+			{
+				counter++;
+				progress_bar (counter, u->I, &now);
+			}
 		}
 	}
-
-
-	printf ("Finished with parallel stuff!\n");
 
 	char * command = (char *) malloc (60 * sizeof (char));
 	sprintf (command, "./anime.sh %s %d %d %d", u->base, save, length, u->I);
