@@ -60,16 +60,19 @@ void init_ising (ising * u,
 	u->Tmax   = Tmax;
 	u->dT     = dT;
 	u->Tmin   = Tmin;
+	u->m      = 0;
 
 	int N = n*n;
 	/* prepare ground for grid initialization */
 	u->g = (int *) malloc (N * sizeof (int));
 	for (int i = 0; i < N-1; i++)
+	{
 		u->g[i] = -1;
+		u->m   -=  1;
+	}
 
 	/* prepare the other stuff */
 	u->H  = (-1)*N*(4*J + h);
-	u->m  = u->g[0]*N;
 
 	u->base = (char *) malloc (30 * sizeof (char));
 	u->file = (char *) malloc (34 * sizeof (char));
@@ -278,7 +281,7 @@ void solver (ising * u)
 			u->T -= u->dT;
 		} while (u->T > u->Tmin);
 	}
-	printf ("\033[J Done!");
+	printf ("\033[F\nDone!\n");
 }
 
 #endif

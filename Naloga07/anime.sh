@@ -15,7 +15,7 @@ mencoder -msgcolor "mf://*.jpg" -mf w=600:h=400:fps=${FPS}:type=jpg -ovc lavc -l
 cp $1.avi $CWD
 
 cd $CWD
-#rm -rf $DIR
+rm -rf $DIR
 mplayer $1.avi
 
 if [ "$SAVE" == "0" ]; then

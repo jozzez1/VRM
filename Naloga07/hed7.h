@@ -43,6 +43,30 @@ typedef struct
 	double ** c;
 } harmonic;
 
+void energy_start (harmonic * u)
+{
+	for (int i = 0; i <= u->M-1; i++)
+	{
+		double q1  = 0,
+		       q2  = 0,
+		       q12 = 0;
+
+		for (int j = 0; j <= u->N-1; j++)
+		{
+			q1  += u->c[i][j] * u->c[i][j];
+			q2  += u->c[(i+1)%u->N][j] * u->c[(i+1)%u->N][j];
+			q12 += u->c[(i+1)%u->N][j] * u->c[i][j];
+		}
+
+		double En = (1.0/u->M) * q1*(0.5 + u->lambda * q1);
+		En -= 0.5*u->T*u->T*u->M*(q1 + q2 - 2*q12);
+		En /= u->N;
+		En += 0.5*u->M*u->T;
+
+		u->E = (1 - 1.0/u->k)*u->E + (1.0/u->k)*En;
+	}
+}
+
 void
 init_harmonic (harmonic * h,
 		int jobs,
@@ -68,7 +92,7 @@ init_harmonic (harmonic * h,
 	h->Tmin     = Tmin;
 	h->T        = Tmin;
 
-	h->k = 0;
+	h->k = 1;
 	h->I = 0;
 
 	/* Marsenne Twister with a REAL random seed*/
@@ -99,15 +123,19 @@ init_harmonic (harmonic * h,
 	/* we open our files/create animation directory */
 	char * regular_dump = (char *) malloc (20 * sizeof (double));
 	h->base = (char *) malloc (20 * sizeof (double));
-	h->file     = (char *) malloc (30 * sizeof (double));
+	h->file = (char *) malloc (30 * sizeof (double));
 	
-	sprintf (regular_dump,  "HARMONIC-N%d.txt", h->N);
-	sprintf (h->base, "animate-N%d", h->N);
+	sprintf (regular_dump,  "HARMONIC-N%dL%d.txt", h->N, (int) h->lambda);
+	sprintf (h->base, "video-N%d-L%d", h->N, (int) h->lambda);
 
 	mkdir (h->base, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH );
 
 	h->fout = fopen (regular_dump, "w");
 	free (regular_dump);
+
+	/* we initialize the energy */
+	h->E = 0;
+	energy_start (h);
 }
 
 void
@@ -150,6 +178,47 @@ void overwrite (double * a, double * x, int N, int jobs)
 {
 	for (int i = 0; i <= N-1; i++)
 		a[i] = x[i];
+}
+
+void update (harmonic * u, int k)
+{
+	double DV  = 0,
+	       DT  = 0,
+	       qk  = 0,
+	       q1  = 0,
+	       q3  = 0,
+	       qk1 = 0,
+	       qk3 = 0,
+	       q21 = 0,
+	       q23 = 0,
+	       q2  = 0;
+
+	for (int i = 0; i <= u->N-1; i++)
+	{
+		q2  += u->c[k][i] * u->c[k][i];
+		q3  += u->c[(k+1)%u->N][i] * u->c[(k+1)%u->N][i];
+		q1  += u->c[(k+u->N-1)%u->N][i] * u->c[(k+u->N-1)%u->N][i];
+		q21 += u->c[k][i] * u->c[(k+u->N-1)%u->N][i];
+		q23 += u->c[k][i] * u->c[(k+1)%u->N][i];
+		qk  += u->xi[i] * u->xi[i];
+		qk1 += u->xi[i] * u->c[(k+u->N-1)%u->N][i];
+		qk3 += u->xi[i] * u->c[(k+1)%u->N][i];
+	}
+
+	DV += qk * (0.5 + u->lambda * qk);
+	DV -= q2 * (0.5 + u->lambda * q2);
+	DV *= 1.0/(u->M * u->N);
+
+	DT += qk + q3 - 2*qk3 + qk + q1 - 2*qk1;
+	DT -= q2 + q3 - 2*q23 + q2 + q1 - 2*q21;
+	DT *= 0.5*u->M*u->T*u->T/u->N;
+
+	u->E += DV - DT;
+}
+
+void reset (harmonic * u)
+{
+	u->E = 0;
 }
 
 // basic Metropolis stepper function
@@ -199,9 +268,18 @@ int step_harmonic (harmonic * h)
 	}
 
 	if (accept)
+	{
+//		update (h, j);      // broken
 		overwrite (h->c[j], h->xi, h->N, h->jobs);
+	}
 
 	return accept;
+}
+
+void dump_regular (harmonic * u)
+{
+	fprintf (u->fout, "% 12e % 12e\n",
+			u->T, u->E);
 }
 
 void dump_animate (harmonic * u)
@@ -223,16 +301,7 @@ void dump_animate (harmonic * u)
 void dump (harmonic * u)
 {
 	dump_animate (u);
-}
-
-void update (harmonic * u)
-{
-	return;
-}
-
-void reset (harmonic * u)
-{
-	return;
+	dump_regular (u);
 }
 
 // 'a' out of 'b' things are done, we started at time 'start'
@@ -277,7 +346,7 @@ void solver (harmonic * u)
 		for (u->k = 1; u->k <= u->v; u->k++)
 		{
 			r += step_harmonic (u);
-			update (u);
+			energy_start (u);
 		}
 
 		dump (u);
@@ -298,7 +367,7 @@ void solver (harmonic * u)
 			for (u->k = 1; u->k <= u->v; u->k++)
 			{
 				r += step_harmonic (u);
-				update (u);
+				energy_start (u);
 			}
 
 			dump (u);
@@ -310,41 +379,6 @@ void solver (harmonic * u)
 			u->T -= u->dT;
 		} while (u->T > u->Tmin);
 	}
-}
-
-void mencoder (harmonic * u, int length)
-{
-	int counter = 0;
-	char * stuff;
-	#pragma omp parallel shared (counter) private (stuff) num_threads (u->jobs)
-	{
-		#pragma omp for
-		for (int k = 0; k <= u->I-1; k++)
-		{
-			double T = k*u->dT + u->Tmin;
-			if (T > u->Tmax)
-				T = 2*u->Tmax - T;
-
-			stuff = (char *) malloc (40 * sizeof (char));
-			sprintf (stuff, "./animate.sh %s %06d %d %lf",
-					u->base, k, u->N, T);
-			system (stuff);
-			free (stuff);
-
-			#pragma omp critical
-			{
-				counter++;
-				progress_bar (counter, u->I-1, NULL);
-			}
-		}
-	}
-
-	printf ("Done!");
-
-	stuff = (char *) malloc (60 * sizeof (char));
-	sprintf (stuff, "./anime.sh %s %d %d %d", u->base, 1, length, u->I);
-	system (stuff);
-	free (stuff);
 }
 
 #endif
