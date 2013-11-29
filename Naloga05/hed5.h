@@ -4,275 +4,317 @@
 #ifndef __HEADER_VRM5
 #define __HEADER_VRM5
 
-#include <string.h>
-#include <stdlib.h>
-#include <sys/stat.h>
+#include <stdio.h>
 #include <math.h>
+#include <stdlib.h>
 #include <gsl/gsl_errno.h>
 #include <gsl/gsl_odeiv2.h>
 
 typedef struct
 {
-	int N,		// chain length
-	    n,		// vector length: 2N + 2
-	    t,		// current time index
-	    tdead,	// time we have to wait for the problem to relaxate a bit
-	    tmax;	// maximum allowed time index
+	int N;		// chain length
 
-	char * baseT,	// file/directory basename for temperature
-	     * baseJ;	// file/directory basename for energy current
+	double TR,	// right side temperature
+	       TL,	// left side temperature
+	       lambda,	// anharmonic factor lambda
+	       prec,	// step precision
+	       tmax,	// maximum time value
+	       tdead,	// dead time -- during this we don't average
+	       tau,	// time constant for zetas
+	       t,	// current time
+	       dt,	// maximum time step length
+	       H;	// Hamiltonian energy
+
+	double * c,	// chain itself
+	       * T,	// temperature profile
+	       * J;	// current
 	
-	double L,	// parameter lambda
-	       tau,	// time parameter tau
-	       TL,	// temperature of the 1st bath
-	       TR,	// temperature of the 2nd bath
-	       prec,	// designated step precision
-	       h,	// step length
-	       * x,	// x = x_t = (q_k, p_k, z_L, z_R)^T_t
-	       * avT,	// average temperature profile
-	       * avJ;	// average energy curren
-
-	// pointer to the "dump" function -- animation or no
-	void (* dump) (void *);
+	int T_flag,	// output temperature profiles on each step
+	    J_flag,	// output current profiles on each step
+	    L_flag;	// output values for different lambdas
 } hod;
 
-/* here's function for the GSL's integrator ... I give up */
-int deriv (double t, const double * y, double * f, void * param)
+// chain components:
+///////////////////////
+// 0 ... N-1  = positions of the chain
+// N ... 2N-1 = chain link momenta
+// 2N         = left zeta
+// 2N+1       = right zeta
+//
+
+// temperature:
+//////////////////////
+// dT > 1:
+// 	TL = 0
+// 	TR = dT
+// dT = 0:
+// 	TL = 1
+// 	TR = 1
+//
+
+double rnd (void)
 {
-	int N = ((hod *) param)->N,
+	double re = (1.0 * (double) rand ())/RAND_MAX;
+	return re;
+}
+
+// initializator
+void init_hod (hod * u,
+		int N,
+		double dt,
+		double tmax,
+		double lambda,
+		double prec,
+		double tau,
+		double tdead)
+{
+	u->N	= N;
+	u->dt	= dt;
+	u->tmax	= tmax;
+	u->prec	= prec;
+	u->tdead= tdead;
+	u->tau	= tau;
+
+	u->lambda= lambda;
+
+	// temperatures on the side are hard-coded
+	u->TL = 1; // values are as per instructions
+	u->TR = 2; // yup ... as per instructions
+
+	int M = 2*N + 2,
 	    i;
+	
+	srand (500);	// we initiate a rand () with a seed value of 500
+	u->c = (double *) malloc (M * sizeof (double));
+	for (i = 0; i <= M-1; i++)
+		u->c [i] = rnd () * 4 - 2; // random garbage
 
-	double L   = ((hod *) param)->L,
-	       tau = ((hod *) param)->tau,
-	       TR  = ((hod *) param)->TR,
-	       TL  = ((hod *) param)->TL;
-
-	/* zetas on the edge */
-	f[2*N]   = (1.0/tau) * (y[N]*y[N] - TL);
-	f[2*N+1] = (1.0/tau) * (y[2*N-1]*y[2*N-1] - TR);
-
-	/* q[i] derivatives are quite trivial */
+	u->T = (double *) malloc (N * sizeof (double));
 	for (i = 0; i <= N-1; i++)
-		f[i] = y[i+N];
+		u->T [i] = 0;
 
-	/* p[0],p[N-1] derivatives ... edge */
-	f[N]     = (-1)*y[1] - y[2*N]*y[N] - y[0]*(1 + 4*L*y[0]*y[0]);
-	f[2*N-1] = y[N-2] - y[2*N+1]*y[2*N-1] - y[2*N-1]*(1 + 4*L*y[2*N-1]*y[2*N-1]);
+	u->J = (double *) malloc (N * sizeof (double));
+	for (i = 0; i <= N-1; i++)
+		u->J [i] = 0;
+}
 
-	for (i = N+1; i <= 2*N-2; i++)
-		f[i] = y[i-N-1] - y[i-N+1] - y[i-N] * (1 + 4*L*y[i-N]*y[i-N]);
+// we have to free the pointers at the end ...
+void kill_hod (hod * u)
+{
+	if (u->c) free (u->c);
+	if (u) free (u);
+}
+
+// the thing is f(y) = \dot{y} ... so
+// f[i] = \dot{y}[i]
+// y[i] = ... our chain ... ;)
+int deriv (double t, const double * y, double * f, void * params)
+{
+	int N = ((hod *) params)->N;
+
+	double TR	= ((hod *) params)->TR,
+	       TL	= ((hod *) params)->TL,
+	       lambda	= ((hod *) params)->lambda,
+	       tau	= ((hod *) params)->tau;
+	
+	// time derivatives of positions
+	int i;
+	for (i = 0; i <= N-1; i++)
+		f[i] = y[i + N];
+
+	// time derivatives of momenta on the boundaries
+	f[N] 	= (-1)*(2*y[0] - y[1] + lambda * pow(y[0], 3)) - y[2*N] * y[N];             // left
+	f[2*N-1]= (-1)*(2*y[N-1] - y[N-2] + lambda * pow(y[N-1],3)) - y[2*N+1] * y[2*N-1]; // right
+
+	// time derivatives of the rest of the momenta
+	for (i = 1; i <= N-2; i++)
+		f[i+N] = (-1)*(3 * y[i] - y[i-1] - y[i+1] + lambda * pow (y[i], 3));
+
+	// time derivatives of the zetas
+	f[2*N]		= (1.0/tau) * (pow (y[N],2) - TL);	// left
+	f[2*N + 1]	= (1.0/tau) * (pow (y[2*N-1],2) - TR);	// right
 
 	return GSL_SUCCESS;
 }
 
-/* we update the average values in their respective arrays */
-void update (hod * u)
+// the hamiltonian ...
+double energy (hod * u)
 {
-	int i = 0,
-	    t = u->t + 1,
-	    N = u->N;
+	double T = 0,
+	       V = 0,
+	       U = 0,
+	       H = 0;
 
-	u->avT[i] = ((t - 1)*1.0/t)*u->avT[i] + (1.0/t)*(0.5 * u->x[i+N]*u->x[i+N]);
-	u->avJ[i] = ((t - 1)*1.0/t)*u->avJ[i] + (1.0/t) * u->x[i+1] * u->x[i+N];
+	int N = u->N,
+	    i;
+
+	for (i = 0; i <= N-2; i++)
+	{
+		T += 0.5 * pow(u->c[i+N],2);
+		U += 0.5 * pow(u->c[i], 2);
+		V += 0.5 * pow(u->c[i+1] - u->c[i], 2);
+	}
+
+	T += 0.5 * pow (u->c[2*N-1], 2);
+	U += 0.5 * pow (u->c[N-1], 2);
+
+	H = T + U + V;
+
+	return H;
+}
+
+// update the average values of stuff ...
+void avg (hod * u)
+{
+	int N = u->N,
+	    i;
 
 	for (i = 1; i <= u->N-2; i++)
 	{
-		u->avT[i] = ((t - 1)*1.0/t)*u->avT[i] + (1.0/t)*(0.5 * u->x[i+N]*u->x[i+N]);
-		u->avJ[i] = ((t - 1)*1.0/t)*u->avJ[i] + (1.0/t)*(u->x[i+1] - u->x[i-1]) * u->x[i+N];
+		u->T [i] += u->dt * pow (u->c[i+N],2);
+		u->J [i] += (-0.5)*u->dt * u->c[i+N] * (u->c[i+1] - u->c[i-1]);
 	}
 
-	u->avT[i] = ((t - 1)*1.0/t)*u->avT[i] + (1.0/t)*(0.5 * u->x[i+N]*u->x[i+N]);
-	u->avJ[i] = ((t - 1)*1.0/t)*u->avJ[i] - (1.0/t) * u->x[i-1] * u->x[i+N];
+	u->T[0] += u->dt * pow (u->c[N], 2);
+	u->T[N-1] += u->dt * pow (u->c[2*N-1], 2);
 }
 
-/* function to dump these sons of bitches for animation */
-void dump_animate (void * u)
+void dump (int change, hod * u)
 {
 	int i;
+	char * dat = (char *) malloc (50 * sizeof (char));
 
-	char * dat1 = (char *) malloc (38 * sizeof (char)),
-	     * dat2 = (char *) malloc (38 * sizeof (char));
-
-	sprintf (dat1, "%s/%05d.txt",
-			((hod *) u)->baseT, ((hod *) u)->t);
-	sprintf (dat2, "%s/%05d.txt",
-			((hod *) u)->baseJ, ((hod *) u)->t);
-
-	FILE * foutT = fopen (dat1, "w"),
-	     * foutJ = fopen (dat2, "w");
-
-	for (i = 0; i <= ((hod *) u)->N-1; i++)
+	FILE * fout;
+	switch (change)
 	{
-		fprintf (foutT, "% 5d % 10e\n", i, ((hod *) u)->avT [i]);
-		fprintf (foutJ, "% 5d % 10e\n", i, ((hod *) u)->avJ [i]);
+		case 0:
+			// dump temperature profile
+			sprintf (dat, "T-N%d-L%d.txt",
+					u->N, (int) u->lambda * 100);
+
+			fout = fopen (dat, "w");
+
+			for (i = 0; i <= u->N-1; i++)
+				fprintf (fout, "% d  % lf\n", i, u->T[i]);
+			fprintf (fout, "\n");
+			break;
+		case 1:
+			// dumping charge current profile
+			sprintf (dat, "J-N%d-L%d.txt",
+					u->N, (int) u->lambda * 100);
+
+			fout = fopen (dat, "w");
+
+			for (i = 0; i <= u->N-1; i++)
+				fprintf (fout, "% d  % lf\n", i, u->J[i]);
+			fprintf (fout, "\n");
+			break;
+		case 2:
+			// dumping crappy energy
+			sprintf (dat, "H-N%d-L%d.txt",
+					u->N, (int) u->lambda * 100);
+
+			if (u->t == 0)
+				fout = fopen (dat, "w");
+			else
+				fout = fopen (dat, "a");
+
+			fprintf (fout, "% lf  % e\n", u->t, u->H);
+			break;
 	}
-	fprintf (foutT, "\n");
-	fprintf (foutJ, "\n");
 
-	fclose (foutT);
-	fclose (foutJ);
-
-	free (dat1);
-	free (dat2);
+	if (dat) free (dat);
+	if (fout) fclose (fout);
 }
 
-/* in this version of dump, we just plot them in a 3d view ... we create a matrix*/
-void just_dump (void * u)
+void solve_for_lambda (hod * u)
 {
-	int i;
-
-	char * dat1 = (char *) malloc (30 * sizeof (char)),
-	     * dat2 = (char *) malloc (30 * sizeof (char));
-	
-	sprintf (dat1, "%s.txt", ((hod *) u)->baseT);
-	sprintf (dat2, "%s.txt", ((hod *) u)->baseJ);
-
-	FILE * foutT = fopen (dat1, "a"),
-	     * foutJ = fopen (dat2, "a");
-	
-	for (i = 0; i <= ((hod *) u)->N-1; i++)
-	{
-		fprintf (foutT, "% 10e", ((hod *) u)->avT [i]);
-		fprintf (foutJ, "% 10e", ((hod *) u)->avJ [i]); 
-	}
-
-	fprintf (foutT, "\n");
-	fprintf (foutJ, "\n");
-
-	fclose (foutT);
-	fclose (foutJ);
-
-	free (dat1);
-	free (dat2);
-}
-
-/* here we just spit out the final part */
-void final_dump (void * u)
-{
-	int N = ((hod *) u)->N;
-
-	char * dat = (char *) malloc (20 * sizeof (char));
-	sprintf (dat, "TJ-final-N%d.txt", N);
-	FILE * fout = fopen (dat, "w");
-
-	for (int i = 0; i <= N-1; i++)
-		fprintf (fout, "% 4d % 12e % 12e\n",
-				i, ((hod *) u)->avT[i], ((hod *) u)->avJ[i]);
-
-	fclose (fout);
-	free (dat);
-}
-
-/* we finally, we solve the problem, and output the data */
-void solver (hod * u)
-{
-	int i;
-
-	gsl_odeiv2_system s = { &deriv, NULL, u->n, u };
+	gsl_odeiv2_system sys = {deriv, NULL, 2*u->N + 2, u};
 	gsl_odeiv2_driver * d =
-		gsl_odeiv2_driver_alloc_y_new (&s, gsl_odeiv2_step_rk4, u->prec, u->prec, 0.0);
+		gsl_odeiv2_driver_alloc_y_new (&sys, gsl_odeiv2_step_rk8pd,
+				1e-6, u->prec, 0.0);
+
+	gsl_odeiv2_driver_set_hmax (d, u->dt);
+
+	int N = u->tdead / u->dt,
+	    i;
 
 	double t = 0.0,
-	       tnext;
+	       H = 0;
 
-	printf ("Dead time:\n");
-	/* some dead steps, to reach a sufficient "weird" stat */
-	for (i = 1; i <= u->tdead; i++)
+	// first we have the dead time
+	for (i = 1; i <= N; i++)
 	{
-		printf("%d/%d\n", i, u->tdead);
-		tnext = i*u->h;
-
-		int status = gsl_odeiv2_driver_apply (d, &t, tnext, u->x);
+		double ti = i * u->dt;
+		int status = gsl_odeiv2_driver_apply (d, &t, ti, u->c);
 
 		if (status != GSL_SUCCESS)
 		{
-			fprintf (stderr, "Error! Return value %d!\n", status);
-			exit (1);
+			printf ("error, return value = %d\n", status);
+			break;
 		}
+
+		printf ("dead time at %lf\n", ti);
+
+		H	= energy (u);
+		u->H	= energy (u);
 	}
 
-	/* now we do stuff for real */
-	t = 0;
-	printf ("Real time:\n");
-	update (u);
-	for (u->t = 1; u->t <= u->tmax; u->t++)
+	// now that we have thermalized our state ... so fun ensues :)
+	t = 0.0;
+	u->t = t;
+	dump (2, u);
+	N = u->tmax / u->dt;
+	for (i = 1; i <= N; i++)
 	{
-		printf ("%d/%d\n", u->t, u->tmax);
-		tnext = u->t * u->h;
-
-		int status = gsl_odeiv2_driver_apply (d, &t, tnext, u->x);
+		double ti = i * u->dt;
+		int status = gsl_odeiv2_driver_apply (d, &t, ti, u->c);
 
 		if (status != GSL_SUCCESS)
 		{
-			fprintf (stderr, "Error! Return value %d!\n", status);
-			exit (1);
+			printf ("error, return value = %d\n", status);
+			break;
 		}
 
-		update (u);
-		u->dump (u);
-	}
-	gsl_odeiv2_driver_free (d);
-}
-
-void init (hod * u,
-		int N, int tmax, int tdead, char * baseT, char * baseJ,
-		double L, double tau, double TL, double TR, double prec,
-		double h, int dump_switch)
-{
-	u->N       = N;
-	u->tmax    = tmax;
-	u->tdead   = tdead;
-	u->L       = L;
-	u->tau     = tau;
-	u->TL      = TL;
-	u->TR      = TR;
-	u->prec    = prec;
-	u->h       = h;
-
-	u->baseT = (char *) malloc (25 * sizeof (char));
-	u->baseJ = (char *) malloc (25 * sizeof (char));
-	strcpy (u->baseT, baseT);
-	strcpy (u->baseJ, baseJ);
-
-	if (dump_switch == 0) u->dump = &final_dump;
-	if (dump_switch == 1) u->dump = &just_dump;
-	if (dump_switch == 2)
-	{
-		u->dump = &dump_animate;
-
-		mkdir (u->baseJ, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
-		mkdir (u->baseT, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+		avg (u);
+		u->H = energy (u); //to see how energy changes ... if it does -- probably it does
+		u->t = ti;
+		printf ("t = %lf\n", u->t);
+		dump (2,u);
 	}
 
-
-	/* here comes the fun part ... vector initialization */
-	u->n = 2 * u->N + 2;
-	u->t = 0;
-
-	u->x  = (double *) malloc (u->n * sizeof (double));
-	/* we also inizialize starting points */
-	u->avT = (double *) calloc (u->N, sizeof (double));
-	u->avJ = (double *) calloc (u->N, sizeof (double));
-
-	int i;
-	/* the starting position is arbitrary ... let's try this one */
-	/* already close to the equilibrium -- linear profile */
+	// now we have to weight the averages with the length of the time
+	// interval
 	for (i = 0; i <= u->N-1; i++)
-		u->x [i] = 0.0;
-	for (; i <= 2*u->N-1; i++)
-		u->x [i] = sqrt (2 * (u->TL + (i-u->N)*(u->TR - u->TL)/(u->N-1)));
-	for (; i <= u->n-1; i++)
-		u->x[i] = 0.0;
+	{
+		u->T [i] /= u->tmax;
+		u->J [i] /= u->tmax;
+	}
+
+	dump (0, u);
+	dump (1, u);
+
+	if (d) gsl_odeiv2_driver_free (d);
 }
 
-void destroy (hod * u)
+// add another one for scanning over lambda
+void scan_through_lambda (hod * u, double dl, double lmax)
 {
-	free (u->baseT);
-	free (u->baseJ);
-	free (u->x);
-	free (u->avT);
-	free (u->avJ);
-	free (u);
+	do
+	{
+		solve_for_lambda (u);
+		//
+		// here comes whatever output I will think of for different lambdas ...
+		//
+
+		// now we have to iterate lambda
+		u->lambda += dl;
+
+		// let's refill the chain again with random stuff
+		int i;
+		for (i = 0; i <= 2*u->N + 1; i++)
+			u->c [i] = 4 * rnd() - 2;
+	} while (u->lambda <= lmax);
 }
 
 #endif

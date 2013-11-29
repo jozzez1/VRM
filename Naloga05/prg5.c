@@ -1,152 +1,88 @@
-// prg5.c
-////////////
-
-#include <stdio.h>
 #include <getopt.h>
-#include <stdlib.h>
 #include "hed5.h"
 
 int main (int argc, char ** argv)
 {
-	int N      = 10,
-	    tmax   = 100,
-	    tdead  = 0,
-	    length = 12,
-	    save   = 1,
+	// default values
+	int N = 20,
 	    arg;
 
-	char * baseT = NULL,
-	     * baseJ = NULL;
-	
-	double L    = 0,
-	       tau  = 1,
-	       TL   = 2,
-	       TR   = 1,
-	       prec = 1e-4,
-	       h    = 1e-2;
-
-	int dump_switch = 1;
+	double dt	= 1e-2,
+	       tmax	= 1000,
+	       lambda	= 0.0,
+	       prec	= 1e-6,
+	       tau	= 1.0,
+	       tdead	= 600;
 
 	struct option longopts[] =
 	{
-		{ "TR",       required_argument,        NULL,         'R' },
-		{ "TL",       required_argument,        NULL,         'L' },
-		{ "tmax",     required_argument,        NULL,         'm' },
+		{ "tmax",     required_argument,        NULL,         'T' },
 		{ "tdead",    required_argument,        NULL,         'd' },
 		{ "prec",     required_argument,        NULL,         'p' },
-		{ "step",     required_argument,        NULL,         'h' },
-		{ "out",      required_argument,        NULL,         'o' },
-		{ "tau",      required_argument,        NULL,         't' },
-		{ "lambda",   required_argument,        NULL,         'l' },
+		{ "dt",       required_argument,        NULL,         't' },
+		{ "tau",      required_argument,        NULL,          1  },
+		{ "lambda",   required_argument,        NULL,         'L' },
 		{ "number",   required_argument,        NULL,         'N' },
-		{ "animate",  no_argument,              NULL,         '2' },
-		{ "dump",     no_argument,              NULL,         '1' },
-		{ "less",     no_argument,              NULL,         '0' },
-		{ "list",     no_argument,              NULL,           1 },
+		{ "help",     no_argument,              NULL,         'h' },
 	};
 
-	while ((arg = getopt_long (argc, argv, "R:L:m:d:p:h:o:t:l:N:210", longopts, NULL)) != -1)
+	while ((arg = getopt_long (argc, argv, "T:d:p:t:L:N:h1", longopts, NULL)) != -1)
 	{
 		switch (arg)
 		{
-			case 'R':
-				TR = atof (optarg);
-				break;
-			case 'L':
-				TL = atof (optarg);
-				break;
-			case 'm':
-				tmax = atoi (optarg);
+			case 'T':
+				tmax = atof (optarg);
 				break;
 			case 'd':
-				tdead = atoi (optarg);
+				tdead = atof (optarg);
 				break;
 			case 'p':
 				prec = atof (optarg);
 				break;
-			case 'h':
-				h = atof (optarg);
-				break;
 			case 't':
+				dt = atof (optarg);
+				break;
+			case 1:
 				tau = atof (optarg);
 				break;
-			case 'l':
-				L = atof (optarg);
+			case 'L':
+				lambda = atof (optarg);
 				break;
 			case 'N':
 				N = atoi (optarg);
 				break;
-			case '0':
-				dump_switch = 0;
-				break;
-			case '1':
-				dump_switch = 1;
-				break;
-			case '2':
-				dump_switch = 2;
-				break;
-			case 'o':
-				baseJ = (char *) malloc (25 * sizeof (char));
-				baseT = (char *) malloc (25 * sizeof (char));
-
-				sprintf (baseJ, "%s-T", optarg);
-				sprintf (baseT, "%s-J", optarg);
-
-				break;
-			case 1:
+			case 'h':
 				printf ("List of commands:\n");
-				printf ("--list,                    printf this list\n");
-				printf ("--TR,       -R <1>         right-hand side temperature\n");
-				printf ("--TL,       -L <2>         left-hand side temperature\n");
-				printf ("--tmax,     -m <100>       maximum time iteration\n");
-				printf ("--tdead,    -d <0>         dead time\n");
-				printf ("--prec,     -p <1e-4>      RK4 precision\n");
-				printf ("--step,     -h <1e-2>      RK4 step length\n");
-				printf ("--out,      -o <format>    output file name\n");
-				printf ("--tau,      -t <1>         tau value\n");
-				printf ("--lambda,   -l <0>         lambda value\n");
-				printf ("--number,   -N <10>        number of particles\n");
-				printf ("---------------------------\n");
-				printf ("--animate,  -2             animate\n");
-				printf ("--dump,     -1 <default>   don't animate, just dump output\n");
-				printf ("--less,     -0             only dump the end result\n");
+				printf ("-------------------\n");
+				printf ("-h / --help   ... prints this list\n");
+				printf ("-T / --tmax   ... maximum time iteration\n");
+				printf ("-d / --tdead  ... dead time before averaging\n");
+				printf ("-t / --td     ... time step length\n");
+				printf ("-L / --lambda ... lambda of the potential U(x)\n");
+				printf ("-N / --number ... N = length of the chain\n");
+				printf ("--tau         ... tau is the time constant for zetas\n");
+				printf ("-------------------\n");
+				printf ("||  defaults\n");
+				printf ("-------------------\n");
+				printf ("tmax	= 1000\n");
+				printf ("tdead	= 600\n");
+				printf ("td	= 0.01\n");
+				printf ("lambda	= 0.0\n");
+				printf ("N	= 20\n");
+				printf ("tau	= 1\n");
 				exit (EXIT_SUCCESS);
 			default:
-				printf ("Unknown command!\nTry %s --list, for list of commands\n", argv[0]);
-				abort ();
+				printf ("Unknown command! Try\n%s --help\nfor list of commands.\n", argv[0]);
+				exit (EXIT_FAILURE);
 		}
 	}
-
-	/* if we have to set the name */
-	if (baseJ == NULL || baseT == NULL)
-	{
-		baseJ = (char *) malloc (25 * sizeof (char));
-		baseT = (char *) malloc (25 * sizeof (char));
-
-		sprintf (baseJ, "J-N%d-TR%.0lf-TL%.0lf", N, TR, TL);
-		sprintf (baseT, "T-N%d-TR%.0lf-TL%.0lf", N, TR, TL);
-	}
-
-	/* we initialize that sonnuvabitch */
+	
 	hod * u = (hod *) malloc (sizeof (hod));
-	init (u, N, tmax, tdead, baseT, baseJ, L, tau, TL, TR, prec, h, dump_switch);
+	init_hod (u, N, dt, tmax, lambda, prec, tau, tdead);
+	solve_for_lambda (u);
 
-	solver (u);
-	destroy (u);
+	kill_hod (u);
 
-	if (dump_switch == 2)
-	{
-		char * command = (char *) malloc (60 * sizeof (char));
-		sprintf (command, "./aniplot.sh %s %s %d %d", baseT, baseJ, length, save);
-
-		free (baseJ);
-		free (baseT);
-
-		system (command);
-
-		free (command);
-	}
-
-	return 0;
+	exit (EXIT_SUCCESS);
 }
 
