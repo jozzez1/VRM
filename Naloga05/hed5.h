@@ -27,11 +27,10 @@ typedef struct
 
 	double * c,	// chain itself
 	       * T,	// temperature profile
-	       * J;	// current
+	       * T2,	// profile of square temperature
+	       * J,	// current
+	       * J2;	// error of the current sigma = sqrt(<J^2> - <J>^2)
 	
-	int T_flag,	// output temperature profiles on each step
-	    J_flag,	// output current profiles on each step
-	    L_flag;	// output values for different lambdas
 } hod;
 
 // chain components:
@@ -93,15 +92,27 @@ void init_hod (hod * u,
 	for (i = 0; i <= N-1; i++)
 		u->T [i] = 0;
 
+	u->T2= (double *) malloc (N * sizeof (double));
+	for (i = 0; i <= N-1; i++)
+		u->T2[i] = 0;
+
 	u->J = (double *) malloc (N * sizeof (double));
 	for (i = 0; i <= N-1; i++)
 		u->J [i] = 0;
+
+	u->J2= (double *) malloc (N * sizeof (double));
+	for (i = 0; i <= N-1; i++)
+		u->J2[i] = 0;
 }
 
 // we have to free the pointers at the end ...
 void kill_hod (hod * u)
 {
 	if (u->c) free (u->c);
+	if (u->T) free (u->T);
+	if (u->T2)free (u->T2);
+	if (u->J) free (u->J);
+	if (u->J2)free (u->J2);
 	if (u) free (u);
 }
 
@@ -172,11 +183,16 @@ void avg (hod * u)
 	for (i = 1; i <= u->N-2; i++)
 	{
 		u->T [i] += u->dt * pow (u->c[i+N],2);
+		u->T2[i] += u->dt * pow (u->c[i+N],4);
 		u->J [i] += (-0.5)*u->dt * u->c[i+N] * (u->c[i+1] - u->c[i-1]);
+		u->J2[i] += u->dt * pow((-0.5) * u->c[i+N] * (u->c[i+1] - u->c[i-1]), 2);
 	}
 
 	u->T[0] += u->dt * pow (u->c[N], 2);
 	u->T[N-1] += u->dt * pow (u->c[2*N-1], 2);
+
+	u->T2[0] += u->dt * pow (u->c[N], 4);
+	u->T2[N-1] += u->dt * pow (u->c[2*N-1], 4);
 }
 
 void dump (int change, hod * u)
@@ -195,7 +211,8 @@ void dump (int change, hod * u)
 			fout = fopen (dat, "w");
 
 			for (i = 0; i <= u->N-1; i++)
-				fprintf (fout, "% d  % lf\n", i, u->T[i]);
+				fprintf (fout, "% d  % lf  % lf\n",
+						i, u->T[i], sqrt(fabs(u->T2[i] - pow(u->T[i],2))));
 			fprintf (fout, "\n");
 			break;
 		case 1:
@@ -206,7 +223,8 @@ void dump (int change, hod * u)
 			fout = fopen (dat, "w");
 
 			for (i = 0; i <= u->N-1; i++)
-				fprintf (fout, "% d  % lf\n", i, u->J[i]);
+				fprintf (fout, "% d  % lf  % lf\n",
+						i, u->J[i], sqrt(fabs(u->J2[i] - u->J[i]*u->J[i])));
 			fprintf (fout, "\n");
 			break;
 		case 2:
@@ -288,13 +306,40 @@ void solve_for_lambda (hod * u)
 	for (i = 0; i <= u->N-1; i++)
 	{
 		u->T [i] /= u->tmax;
+		u->T2[i] /= u->tmax;
 		u->J [i] /= u->tmax;
+		u->J2[i] /= u->tmax;
 	}
 
 	dump (0, u);
 	dump (1, u);
 
 	if (d) gsl_odeiv2_driver_free (d);
+}
+
+void avg_J (hod * u)
+{
+	int i;
+	double J	= 0,
+	       Je2	= 0,
+	       err	= 0;
+
+	for (i = 1; i <= u->N-2; i++)
+	{
+		J += u->J[i];
+		Je2 += u->J2[i] - u->J[i]*u->J[i];
+	}
+	J /= (u->N - 2);
+	err = sqrt (Je2)/sqrt(u->N - 2);
+
+	char * dat = (char *) malloc (20 * sizeof (char));
+	sprintf (dat, "avg-J-L%d.txt", (int) u->lambda);
+
+	FILE * fout = fopen (dat, "a");
+	fprintf (fout, "% d  % lf %lf\n", u->N, J, err);
+	
+	free (dat);
+	fclose (fout);
 }
 
 // add another one for scanning over lambda

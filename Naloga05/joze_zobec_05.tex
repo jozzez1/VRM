@@ -1,0 +1,187 @@
+\documentclass[a4 paper, 12pt]{article}
+\usepackage[slovene]{babel}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[small, width=0.8\textwidth]{caption}
+\usepackage[pdftex]{graphicx}
+\usepackage{amssymb, amsmath, mathtools, fullpage, float, hyperref, stackrel}
+
+\begin{document}
+
+\begin{center}
+\textsc{Višje računske metode}\\
+\textsc{2012/13}\\[0.5cm]
+\textbf{5. naloga -- Molekularna dinamika}
+\end{center}
+\begin{flushright}
+\textbf{Jože Zobec}
+\end{flushright}
+
+\newcommand{\e}{
+	\ensuremath{\text{e}}
+}
+
+\renewcommand{\d}{
+	\ensuremath{\text{d}}
+}
+
+\section{Uvod}
+
+Z Nosé-Hooverjevim modelom termostata spremljamo dinamiko čisto klasi\v cne verige. Vsak člen koordinato $q_i$ in gibalno
+koli\v cino $p_i$. Skrajno levi člen je sklopljen s kopeljo, ki je na temperaturi $T_L$, skrajno desni člen pa s kopeljo
+ki je na fiksni temperaturi $T_R$.
+
+Za verigo dol\v zine $N$ imamo $2N + 2$ spremenljivk -- $2$ dodatni spremenljivki prideta iz termostatov. Gibalne ena\v cbe se
+glase (v brezdimenzijskih koli\v cinah predpostavimo, da je $m_j = 1, \forall\ j$):
+\begin{align*}
+	\frac{\d q_j}{\d t} &= p_j \\
+	\frac{\d p_j}{\d t} &= - \frac{\partial \tilde{V}(\underline{q})}{\partial q_j} - \delta_{j,1}\zeta_L p_1 - \delta_{j,N} \zeta_R p_N \\
+	\frac{\d \zeta_L}{\d t} &= \frac{1}{\tau} \bigg(p_1^2 - T_L\bigg) \\
+	\frac{\d \zeta_R}{\d t} &= \frac{1}{\tau} \bigg(p_N^2 - T_R\bigg)
+\end{align*}
+Potencial $\tilde{V}$ je v našem primeru
+\[
+	\tilde{V}(\underline{q}) = \sum_{k = 1}^{N-1}V (q_{k+1} - q_k) + \sum_{k = 1}^N U (q_k),
+\]
+kjer $V(q_{k+1} - q_k)$ predstavlja interakcijo med členi, $U (q_k)$ pa interakcijo s substratom.
+\[
+	V(x) = \frac{1}{2}x^2, \qquad U(x) = \frac{1}{2}x^2 + \frac{\lambda}{4}x^4.
+\]
+Odvod (gradient) potenciala $\tilde{V}$ je torej
+\[
+	\frac{\d \tilde{V}(\underline{q})}{\d q_j} = \frac{\d}{\d q_j} \Bigg[\sum_{k = 1}^{N-1}V (q_{k+1} - q_k) +
+		\sum_{k = 1}^N U (q_k)\Bigg] \\
+	= \left\{
+	\begin{array}{rl}
+		3 q_j - q_{j-1} - q_{j+1} + \lambda q_j^3, &\quad 1 < j < N \\
+		2 q_j - q_{j+1} + \lambda q_j^3, &\quad j = 1 \\
+		2 q_j - q_{j-1} + \lambda q_j^3, &\quad j = N
+	\end{array}\right.
+\]
+Parametra $\zeta_L$ in $\zeta_R$ predstavljata interakcijo s kopelmi. Parameter $\tau$ je časovna konstanta, s katero kopeli regulirata
+obnašanje na koncéh verige.
+
+\section{Ra\v cun}
+
+Zaradi interakcije s termostatom sistem ni več Hamiltonski (enačbe ne opišejo celotnega sistema, zaradi tega se energija verige ne
+ohranja). To pomeni, da ne bomo mogli uporabiti simplektičnih integratorjev. Uporabil sem metodo Runge-Kutta reda 8 iz numerične
+knjižnjice {\tt GSL}.
+
+Po navodilih je $T_L = 1$ in $T_R = 2$. Časovni parameter $\tau$ sem postavil na $1$. Najprej si poglejmo temperaturni profil za
+razli\v cne dol\v zine in razli\v cne vrednosti anharmonskega parametra $\lambda$. Indeksi verižnih členov za verigo dolžine $N$ tečejo
+od $1$ do $N - 1$.
+
+\subsection{Temperaturni profil}
+
+Definiran je kot
+\[
+	\langle T_i \rangle = \lim_{t \to \infty} \langle p_i^2 (t) \rangle = \lim_{t \to \infty} \frac{1}{t} \int_0^{t} \d t'\ p_i^2 (t')
+\]
+
+\begin{figure}[H]
+	\input{temp-N20.tex}
+	\caption{Vidimo, da je v primeru $\lambda = 0$ res profil nekoliko izravnan, v $\lambda \neq 0$ pa ne. Kljub temu preveč
+		fluktuira, da bi lahko zanesljivo rekli.}
+\end{figure}
+
+\begin{figure}[H]
+	\input{temp-N40.tex}
+	\caption{Profil za $\lambda = 0$ zelo izravnan, zadržuje se med $\frac{1}{2}(T_L + T_R)$. Ko $\lambda \neq 0$ imamo tudi
+		obnašanje premice ki je na robovih $T_{L,R}$.}
+\end{figure}
+
+\begin{figure}[H]
+	\input{temp-N60.tex}
+	\caption{Mrtvi čas in čas vzorčenja sta morala biti že zelo dolga ($t_\text{mrtvi} = 20000$ in $t_\text{vzorčenja} = 5000$).
+		Imamo pa zato zelo dobro izpolnjen pogoj Fourierovih fenomenoloških zakonov. Vidimo, da kljub temu graf za $\lambda = 4$
+		pobezlja.}
+\end{figure}
+
+\begin{figure}[H]
+	\input{temp-N80.tex}
+	\caption{Mrtvi čas in čas vzorčenja je bilo treba še dodatno priviti. Rezultati se bistveno ne razlikujejo od tistih za $N = 60$.}
+\end{figure}
+
+\subsection{Toplotni tok}
+
+Tok $J_j$ je definiran kot
+\[
+	J_j = -\frac{1}{2}\Big(q_{j+1} - q_{j-1}\Big)p_j.
+\]
+Kaj to pomeni za robove ne vemo, zaradi tega sem ga pustil na 0. Rezultati so predstavljeni
+na sledečih grafih.
+
+\begin{figure}[H]
+	\input{curr-N20.tex}
+	\caption{Vidimo, da se z večanjem parametra $\lambda$ tok hitro spreminja in da Fourierov zakon kar dobro drži.}
+\end{figure}
+
+\begin{figure}[H]
+	\input{curr-N40.tex}
+	\caption{Isto kot prej. Z večanjem $N$ zakon bolje drži.}
+\end{figure}
+
+\begin{figure}[H]
+	\input{curr-N60.tex}
+	\caption{Isto kot prej. Z večanjem $N$ zakon bolje drži.}
+\end{figure}
+
+\begin{figure}[H]
+	\input{curr-N80.tex}
+	\caption{Isto kot prej. Z večanjem $N$ zakon bolje drži.}
+\end{figure}
+
+Fourierov zakon napoveduje, da za $\lambda > 0$ z večanjem $N$ $J_j$ pada kot $1/N$, oz.
+\[
+	\langle J \rangle = \kappa \frac{T_R - T_L}{N}.
+\]
+Tu sem si vzel
+\[
+	\langle J \rangle = \frac{1}{N} \sum_j \langle J_j\rangle,
+\]
+kar je isto kot dalj časa povprečen $\langle J_j \rangle$, saj je slednji neodvisen od $J$. Poiščimo $\kappa$, oz.
+poglejmo, če ga je moč poiskati. Mrtvi čas sem vzel $60000$, čas merjenja pa $15000$, da bi se res znebil čim več fluktuacij in
+dobil karseda natančno meritev. Meril sem tudi napako
+\[
+	\sigma^2_{\langle J_j \rangle} = \langle J_j^2 \rangle - \langle J_j \rangle^2.
+\]
+
+Podatki, ki sem jih tako dobil sicer imajo res trend $1/N$, vendar so napake ogromne:
+
+\begin{table}[H]\centering
+	\caption{Meritve povprečnih tokov za $\lambda = 4$ pri različnih dol\v zinah verige $N$. Napake so v primerjavi
+		s povprečnimi vrednostmi ogromne. Menim, da so prevelike za našo oceno parametra $\kappa$.}
+	\begin{tabular}{ c | c | c}
+		$N$ & $\langle J \rangle$ & $\sigma_{\langle J \rangle}$ \\
+		\hline
+		 10 & -0.009294 & 0.437881 \\
+		 20 & -0.006743 & 0.465594 \\
+		 30 & -0.004664 & 0.461505 \\
+		 40 & -0.004223 & 0.477830 \\
+		 50 & -0.002353 & 0.416358 \\
+		 60 & -0.005125 & 0.399880 \\
+		 70 & -0.000791 & 0.421343 \\
+		 80 & -0.002877 & 0.518759
+	\end{tabular}
+\end{table}
+
+Kljub vsemu bomo poiskali krivuljo, ki se s trendom $\kappa/N$ najbolj ujema. Za prilagajanje sem uporabil kar isto orodje,
+ki ga uporabljam za izris, tj. {\tt gnuplot}.
+
+\begin{figure}[H]
+	\input{avg-curr.tex}
+	\caption{Napaka je res velika. Težko je videti rezultat. Numerično je program vrnil, da je $\kappa = -0.11106 \pm 0.01464 =
+		-0.11106 \cdot (1 \pm 0.1318)$.}
+\end{figure}
+
+Sumljivo se mi zdi, da bi bila napaka tako majhna, kljub temu, da je fit upošteval tudi napake v tabeli. Graf narišimo še enkrat brez
+napak.
+
+\begin{figure}[H]
+	\input{avg-curr2.tex}
+	\caption{Merske napake so očitno upoštevane, sicer bi fit tekel nižje. Vendar pa verjetno niso upoštevane v
+		izračunu napake $\kappa$.}
+\end{figure}
+
+\end{document}
+

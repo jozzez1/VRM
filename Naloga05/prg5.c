@@ -81,6 +81,8 @@ int main (int argc, char ** argv)
 	init_hod (u, N, dt, tmax, lambda, prec, tau, tdead);
 	solve_for_lambda (u);
 
+	avg_J (u);
+
 	kill_hod (u);
 
 	exit (EXIT_SUCCESS);
