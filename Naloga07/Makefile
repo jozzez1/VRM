@@ -1,12 +1,12 @@
-CC=gcc
+CC=clang
 PRGNAM=nal7
 SOURCE=prg7.c
-CPUTYPE=native
+CPUTYPE=corei7
 COPTFLAG?=-O3
 
 CFLAGS=$(COPTFLAG) -march=$(CPUTYPE) -pipe\
        -Wall -pedantic-errors\
-       -lm -lc -lgsl -lgslcblas -fopenmp\
+       -lm -lc -lgsl -lgslcblas\
        -I/usr/local/include\
        -L/usr/local/lib\
        -std=c99
