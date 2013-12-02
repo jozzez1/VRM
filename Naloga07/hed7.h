@@ -48,6 +48,9 @@ init_hod (hod * u,			// startup function
 	u->eps	= eps;
 	u->L	= lambda;
 
+	// we will also initialize the random seed for our generator
+	srandom (500);
+
 	// we allocate the chain and the time frames it's in
 	u->q = (double **) malloc (u->M * sizeof (double *));		// 1st index is the time-frame
 	for (int j = 0; j <= u->M-1; j++)
@@ -62,9 +65,6 @@ init_hod (hod * u,			// startup function
 	// we allocate the space for our random vector
 	// and initialize its values to zero for now
 	u->x = (double *) calloc (N,  sizeof (double));
-
-	// we will also initialize the random seed for our generator
-	srandom (500);
 
 	// our initial position in beta is this ...
 	u->beta = u->bmin;
@@ -190,7 +190,7 @@ randomize_x (hod * u)		// function that creates q'[j]
 	// we initialize x ... we will just use the C random number generator ... YOLO
 	for (int i = 0; i <= u->N-1; i++)
 	{
-		u->x[i]	= ((double) random ())/RAND_MAX;
+		u->x[i]	=  2 * (((double) random ())/RAND_MAX) - 1; // x[i] is in [-1, 1)
 		N	+= u->x[i] * u->x[i];
 	}
 
@@ -202,7 +202,7 @@ randomize_x (hod * u)		// function that creates q'[j]
 	int j = (int) random () % u->M;
 	for (int i = 0; i <= u->N-1; i++)
 	{
-		u->x[i] *= u->eps;
+		u->x[i] *= u->eps * sqrt(u->beta/u->bmin);
 		u->x[i] += u->q[j][i];
 	}
 
@@ -328,7 +328,8 @@ solver (hod * u)
 		u->HpN /= u->v;
 
 		// we output the results
-		fprintf (fout, "%lf\t%lf\n", u->beta, u->HpN);
+		fprintf (fout, "%lf\t%lf\t%.lf\n",
+				u->beta, u->HpN, (1.0 * a)/u->v);
 
 		//
 		// or maybe even prepare them for animation -- not finished

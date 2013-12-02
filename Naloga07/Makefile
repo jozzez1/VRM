@@ -18,4 +18,4 @@ dbg:
 	$(CC) -o $(PRGNAM) $(SOURCE) $(CFLAGS) -g
 
 clean:
-	rm -rf video-* HARMONIC*
+	rm -rf video-* N*-M*.txt
