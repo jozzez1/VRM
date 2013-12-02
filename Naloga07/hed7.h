@@ -20,6 +20,7 @@ typedef struct
 	       beta,	// current beta
 	       eps,	// epsilon
 	       L,	// quartic anharmonic parameter -- lambda
+	       VpN,	// average <V>/N
 	       HpN;	// average <H>/N
 
 	double ** q;	// chain itself
@@ -132,6 +133,17 @@ current_EpN (hod * u)	// E/N -- unaveraged
 
 	S += C;
 	return S;
+}
+
+double
+current_VpN (hod * u)   // calculates the potential
+{
+	double V = 0;
+	for (int j = 0; j <= u->M-1; j++)
+		V += potential_V (u, j);
+	V *= 1.0/(u->M * u->N);
+
+	return V;
 }
 
 double
@@ -254,6 +266,7 @@ one_step (hod * u)		// we only make one step with this function
 
 	// we refresh the energy with either the old q[j], or the new q'[j]
 	u->HpN += current_EpN (u);
+	u->VpN += current_VpN (u);
 
 	return a;
 }
@@ -265,8 +278,8 @@ one_step (hod * u)		// we only make one step with this function
 // 2. on each step we sum energies together to HpN and output number of accepted moves to stdout
 // 3. then we divide HpN = HpN/u->v = <H>/N
 // 4. we output that number to a file as
-// 	#1 beta   #2 <H>/N
-// 	   ...       ...
+// 	#1 beta   #2 <H>/N   #3 <V>/N   #4 acceptance ratio
+// 	   ...       ...        ...             ........
 // 5. then we reset HpN to zero and increment the beta by db
 // 6. we do it, until our beta reached bmax
 
@@ -314,6 +327,8 @@ solver (hod * u)
 	int part	= 0,
 	    total	= (u->bmax - u->bmin) / u->db;
 
+	// well ... first we have to thermalize the state ...
+
 	// we open the file for writing, overwriting anything old
 	FILE * fout = fopen (dat, "w");
 	do
@@ -326,10 +341,11 @@ solver (hod * u)
 
 		// we still have to divide with iterations ...
 		u->HpN /= u->v;
+		u->VpN /= u->v;
 
 		// we output the results
-		fprintf (fout, "%lf\t%lf\t%.lf\n",
-				u->beta, u->HpN, (1.0 * a)/u->v);
+		fprintf (fout, "%lf\t%lf\t%lf\t%.3lf\n",
+				u->beta, u->HpN, u->VpN, (1.0 * a)/u->v);
 
 		//
 		// or maybe even prepare them for animation -- not finished
@@ -337,6 +353,7 @@ solver (hod * u)
 
 		// now we pave the way for the next step
 		u->HpN = 0;
+		u->VpN = 0;
 		u->beta += u->db;
 		part++;
 

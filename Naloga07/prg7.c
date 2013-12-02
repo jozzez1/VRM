@@ -34,7 +34,7 @@ int main (int argc, char ** argv)
 		{ NULL,      0,                      NULL,         0 }
 	};
 
-	while ((arg = getopt_long (argc, argv, "M:N:v:B:b:d:e:L:h", longopts, NULL)) != -1)
+	while ((arg = getopt_long (argc, argv, "M:N:v:B:b:d:e:Lh", longopts, NULL)) != -1)
 	{
 		switch (arg)
 		{
