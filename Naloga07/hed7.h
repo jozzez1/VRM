@@ -4,285 +4,289 @@
 #ifndef __HEADER_VRM7
 #define __HEADER_VRM7
 
-#include <stdlib.h>
-#include <sys/stat.h>
 #include <math.h>
-#include <time.h>
-#include <gsl/gsl_rng.h>
-#include <gsl/gsl_randist.h>
-
-#include <omp.h>
+#include <stdlib.h>
+#include <stdio.h>
 
 typedef struct
 {
-	int N,
-	    M,
-	    jobs,
-	    I,
-	    mode,
-	    k,
-	    v;
+	int N,	// chain length
+	    M,	// number of time frames of the chain
+	    v;	//time we wait at a constant temperature, so we can average the energy
 
-	double E,
-	       T,
-	       dT,
-	       Tmin,
-	       Tmax,
-	       epsilon,
-	       lambda,
-	       * xi;
+	double bmax,	// max beta
+	       bmin,	// min beta
+	       db,	// beta step
+	       beta,	// current beta
+	       eps,	// epsilon
+	       L,	// quartic anharmonic parameter -- lambda
+	       HpN;	// average <H>/N
 
-	FILE * fout,
-	     * fani;
-	
-	char * base,
-	     * file;
-
-	gsl_rng * rand;
-
-	double ** c;
-} harmonic;
-
-void energy_start (harmonic * u)
-{
-	for (int i = 0; i <= u->M-1; i++)
-	{
-		double q1  = 0,
-		       q2  = 0,
-		       q12 = 0;
-
-		for (int j = 0; j <= u->N-1; j++)
-		{
-			q1  += u->c[i][j] * u->c[i][j];
-			q2  += u->c[(i+1)%u->N][j] * u->c[(i+1)%u->N][j];
-			q12 += u->c[(i+1)%u->N][j] * u->c[i][j];
-		}
-
-		double En = (1.0/u->M) * q1*(0.5 + u->lambda * q1);
-		En -= 0.5*u->T*u->T*u->M*(q1 + q2 - 2*q12);
-		En /= u->N;
-		En += 0.5*u->M*u->T;
-
-		u->E = (1 - 1.0/u->k)*u->E + (1.0/u->k)*En;
-	}
-}
+	double ** q;	// chain itself
+	double * x;	// random vector for stepping
+} hod;
 
 void
-init_harmonic (harmonic * h,
-		int jobs,
+init_hod (hod * u,			// startup function
 		int N,
 		int M,
-		int v,
-		int mode,
-		double dT,
-		double Tmin,
-		double Tmax,
-		double epsilon,
+		double bmin,
+		double bmax,
+		double db,
+		double v,
+		double eps,
 		double lambda)
 {
-	h->N        = N;
-	h->M        = M;
-	h->v        = v;
-	h->mode     = mode;
-	h->jobs     = jobs;
-	h->epsilon  = epsilon;
-	h->lambda   = lambda;
-	h->dT       = dT;
-	h->Tmax     = Tmax;
-	h->Tmin     = Tmin;
-	h->T        = Tmin;
+	u->N 	= N;
+	u->M 	= M;
 
-	h->k = 1;
-	h->I = 0;
+	u->bmin	= bmin;
+	u->bmax	= bmax;
+	u->db	= db;
+	u->v 	= v;
 
-	/* Marsenne Twister with a REAL random seed*/
-	int seed;
+	u->eps	= eps;
+	u->L	= lambda;
 
-	FILE * frandom = fopen ("/dev/urandom", "r");
-	fread (&seed, sizeof (int), 1, frandom);
-
-	h->rand = gsl_rng_alloc (gsl_rng_mt19937);
-	gsl_rng_set (h->rand, seed);
-
-	fclose (frandom);
-
-	/* create and populate the QM harmonic oscillator */
-	h->c = (double **) malloc (h->M * sizeof (double *));
-	for (int i = 0; i <= h->M-1; i++)
-		h->c[i] = (double *) malloc (h->N * sizeof (double));
-
-	h->xi = (double *) malloc (h->N * sizeof (double));
-
-	/* we fill that thing, can be unnormalized */
-	for (int j = 0; j <= h->M-1; j++)
+	// we allocate the chain and the time frames it's in
+	u->q = (double **) malloc (u->M * sizeof (double *));		// 1st index is the time-frame
+	for (int j = 0; j <= u->M-1; j++)
 	{
-		for (int i = 0; i <= h->N - 1; i++)
-			h->c[j][i] = gsl_ran_gaussian_ziggurat (h->rand, 1.0/h->N);
+		u->q[j] = (double *) malloc (u->N * sizeof (double));	// 2nd index is the link of the chain
+
+		// since we're in this loop, let's also initialize the chain elements
+		for (int i = 0; i <= u->N-1; i++)
+			u->q[j][i] = 0;
 	}
 
-	/* we open our files/create animation directory */
-	char * regular_dump = (char *) malloc (20 * sizeof (double));
-	h->base = (char *) malloc (20 * sizeof (double));
-	h->file = (char *) malloc (30 * sizeof (double));
-	
-	sprintf (regular_dump,  "HARMONIC-N%dL%d.txt", h->N, (int) h->lambda);
-	sprintf (h->base, "video-N%d-L%d", h->N, (int) h->lambda);
+	// we allocate the space for our random vector
+	// and initialize its values to zero for now
+	u->x = (double *) calloc (N,  sizeof (double));
 
-	mkdir (h->base, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH );
+	// we will also initialize the random seed for our generator
+	srandom (500);
 
-	h->fout = fopen (regular_dump, "w");
-	free (regular_dump);
+	// our initial position in beta is this ...
+	u->beta = u->bmin;
 
-	/* we initialize the energy */
-	h->E = 0;
-	energy_start (h);
+	// well, let's keep our intial energy a secret ... :D
+	u->HpN	= 0;
 }
 
 void
-destroy (harmonic * h)
+destroy (hod * u)			// "destructor"
 {
-	fclose (h->fout);
-	free (h->base);
-	free (h->file);
-	free (h->xi);
-
-	gsl_rng_free (h->rand);
-
-	for (int i = 0; i <= h->M-1; i++)
-		free (h->c[i]);
-	free (h->c);
-	free (h);
+	for (int j = 0; j <= u->M-1; j++)
+		if (u->q[j]) free (u->q[j]);
+	
+	if (u->q) free (u->q);
+	if (u->x) free (u->x);
+	
+	free (u);
 }
 
-double factorP (double * a, double * b, harmonic * h)
+double
+potential_V (hod * u, int j)
 {
-	double a2 = 0,
-	       b2 = 0,
-	       ab = 0;
-
-	for (int i = 0; i <= h->N-1; i++)
-	{
-		a2 += a[i]*a[i];
-		b2 += b[i]*b[i];
-		ab += a[i]*b[i];
-	}
-
-	double Tp = (h->M*h->T) * (b2 + a2 - 2 * ab),
-	       Vp = (1.0/(h->M*h->T)) * a2 * (0.5 + h->lambda*a2);
-
-	return exp ((-1) * (Tp + Vp));
-}
-
-// we overwrite a with x
-void overwrite (double * a, double * x, int N, int jobs)
-{
-	for (int i = 0; i <= N-1; i++)
-		a[i] = x[i];
-}
-
-void update (harmonic * u, int k)
-{
-	double DV  = 0,
-	       DT  = 0,
-	       qk  = 0,
-	       q1  = 0,
-	       q3  = 0,
-	       qk1 = 0,
-	       qk3 = 0,
-	       q21 = 0,
-	       q23 = 0,
-	       q2  = 0;
+	// returns 1/2 (q_j^T * q_j) = 0.5 \sum_i q_ji * q_ij
+	double V = 0,
+	       L = 0;
 
 	for (int i = 0; i <= u->N-1; i++)
 	{
-		q2  += u->c[k][i] * u->c[k][i];
-		q3  += u->c[(k+1)%u->N][i] * u->c[(k+1)%u->N][i];
-		q1  += u->c[(k+u->N-1)%u->N][i] * u->c[(k+u->N-1)%u->N][i];
-		q21 += u->c[k][i] * u->c[(k+u->N-1)%u->N][i];
-		q23 += u->c[k][i] * u->c[(k+1)%u->N][i];
-		qk  += u->xi[i] * u->xi[i];
-		qk1 += u->xi[i] * u->c[(k+u->N-1)%u->N][i];
-		qk3 += u->xi[i] * u->c[(k+1)%u->N][i];
+		V += pow (u->q[j % u->M][i], 2);
+		L += pow (u->q[j % u->M][i], 4);	// anharmonic quartic correction
 	}
 
-	DV += qk * (0.5 + u->lambda * qk);
-	DV -= q2 * (0.5 + u->lambda * q2);
-	DV *= 1.0/(u->M * u->N);
+	V *= 0.5;
+	L *= u->L;
 
-	DT += qk + q3 - 2*qk3 + qk + q1 - 2*qk1;
-	DT -= q2 + q3 - 2*q23 + q2 + q1 - 2*q21;
-	DT *= 0.5*u->M*u->T*u->T/u->N;
+	V += L;
 
-	u->E += DV - DT;
+	return V;
 }
 
-void reset (harmonic * u)
+double
+potential_W (hod * u, int j)
 {
-	u->E = 0;
+	// not really a potential but more like "interaction" between time frames
+	double W = 0;
+
+	// periodic boundary conditions -- that's why we have "(j+1) mod M"
+	for (int i = 0; i <= u->N-1; i++)
+		W += pow(u->q[(j+1) % u->M][i] - u->q[j % u->M][i], 2);
+	
+	return W;
 }
 
-// basic Metropolis stepper function
-int step_harmonic (harmonic * h)
+double
+current_EpN (hod * u)	// E/N -- unaveraged
 {
-	// we select the state vector at random
-	int j = (int) h->M * gsl_rng_uniform (h->rand),
-	    accept = 1;
+	double C   = (0.5 * u->M) / u->beta,		// constant part
+	       A   = (-1) * C / (u->beta * u->N),	// weight of the W
+	       B   = 1.0 / (u->M * u->N),		// weight of the V
+	       S   = 0;					// sum of them all
 
-	if (j == h->M)
-		j--;
+	for (int j = 0; j <= u->M-1; j++)
+		S += A * potential_W (u, j) + B * potential_V (u, j);
 
-	// we compute the difference vector:
-	// (1) we allocate it, and prepare normalization S
-	double S = 0;
+	S += C;
+	return S;
+}
 
-	// (2) so now we set the variables ...
-	for (int i = 0; i <= h->N-1; i++)
+double
+prob_P (hod * u, int j)	// P (q_j, q_{j+1})
+{
+	double A = (-0.5) * (u->M / u->beta),
+	       B = (-1) * (u->beta / u->M),
+	       S = A * potential_W (u, j) + B * potential_V (u, j),
+	       P = exp (S);
+
+	return P;
+}
+
+void
+switcheroo (int N, double * a, double * b) // we switch two vectors
+{
+	double c;
+	for (int i = 0; i <= N-1; i++)
 	{
-		h->xi[i] = gsl_ran_gaussian_ziggurat (h->rand, 1.0/h->N);
-		S += h->xi[i] * h->xi[i];
+		c	= a [i];
+		a [i]	= b [i];
+		b [i]	= c;
+	}
+}
+
+void
+replace (hod * u, int j)  // we replace the rolls of u->x and u->q[j] ... so we make a switcheroo ;)
+{
+	switcheroo (u->N, u->x, u->q[j]);
+}
+
+//now we need a function that does exactly one time iteration step
+// how we do this? ...
+//
+// the general idea
+// ------------------
+// 1. we generate a random perturbation chain -- x
+// 2. we pick a random time frame -- q[j]
+// 3. calculate the P (q, x) (so that the q[j] --> q'[j] = q[j] + eps*x) (eps is a positive real number)
+// 4.1 if total probability is P >= 1: we accept this move
+// 4.2 if P < 1: we generate a random number in [0,1) -- y
+//             a) y < P ..... we accept the move
+//             b) y > P ..... we reject the move
+// 
+// 5. let's assume the move was accepted:
+// q[j] = q'[j];
+// HpN += E/N;
+// we will divide the HpN with the number of time iterations at the end
+//  
+
+int
+randomize_x (hod * u)		// function that creates q'[j]
+{
+	double N = 0;	// for normalization
+
+	// we initialize x ... we will just use the C random number generator ... YOLO
+	for (int i = 0; i <= u->N-1; i++)
+	{
+		u->x[i]	= ((double) random ())/RAND_MAX;
+		N	+= u->x[i] * u->x[i];
 	}
 
-	// we want it to have length epsilon
-	S = sqrt (S)/h->epsilon;
+	// now we normalize this vector `x'
+	for (int i = 0; i <= u->N-1; i++)
+		u->x[i] = u->x[i] / sqrt (N);
 
-	// (3) we normalize it accordingly and update some vectors
-	for (int i = 0; i <= h->N-1; i++)
+	// we will make our x --> q'[j] ... so
+	int j = (int) random () % u->M;
+	for (int i = 0; i <= u->N-1; i++)
 	{
-		h->xi[i] /= S;
-		h->xi[i] += h->c[j][i];
+		u->x[i] *= u->eps;
+		u->x[i] += u->q[j][i];
 	}
 
-	// (4) now we calculate the "stuff"
-	double P1p = factorP (h->c[(j+h->N-1)%h->N], h->xi, h),
-	       P2p = factorP (h->xi, h->c[(j+1)%h->N], h),
-	       P1  = factorP (h->c[(j-1+h->N)%h->N], h->c[j], h),
-	       P2  = factorP (h->c[j], h->c[(j+1)%h->N], h),
-	       p   = (P1p * P2p)/(P1 * P2);
+	return j;
+}
 
-	// now we check if we'll accept the move
-	if (p < 1)
+int
+prob_to_step (hod * u, int j)	// this function will calculate if we accept the q'[j] as the new q[j]
+{
+	int accept = 1;
+
+	double Po1,	// probablity with the old q -- P(q[j-1], q[j])
+	       Po2,	//          -"-      -"-     -- P(q[j], q[j+1])
+	       Pn1,	// same, just replace the q[j] with the q'[j],
+	       Pn2;	//                   -"-
+	
+	// 1st we calculate the old ones
+	Po1 = prob_P (u, j);
+	Po2 = prob_P (u, j+1);
+
+	// then we switch q[j] with q'[j]
+	replace (u, j);
+
+	// now we calculate the new values
+	Pn1 = prob_P (u, j);
+	Pn2 = prob_P (u, j+1);
+
+	// total probability
+	double P = ((Pn1 * Pn2) / (Po1 * Po2));
+
+	if (P < 1)
 	{
-		double test = gsl_rng_uniform (h->rand);
-		if (test > p)
+		double y = ((double) random ())/RAND_MAX;
+		if (y > P)
+		{
 			accept = 0;
-	}
-
-	if (accept)
-	{
-//		update (h, j);      // broken
-		overwrite (h->c[j], h->xi, h->N, h->jobs);
+			replace (u, j);	// if we reject it, we have to put the old q[j] back
+		}
 	}
 
 	return accept;
 }
 
-void dump_regular (harmonic * u)
+int
+one_step (hod * u)		// we only make one step with this function
 {
-	fprintf (u->fout, "% 12e % 12e\n",
-			u->T, u->E);
+	int j = randomize_x (u),	// we create our q'[j]
+	    a = prob_to_step (u, j);	// we accept/reject it
+
+	// we refresh the energy with either the old q[j], or the new q'[j]
+	u->HpN += current_EpN (u);
+
+	return a;
 }
 
-void dump_animate (harmonic * u)
+// now we have to move around with temperature, yes? -- yes :)
+// general idea
+// -----------------
+// 1. make u->v steps at constant beta
+// 2. on each step we sum energies together to HpN and output number of accepted moves to stdout
+// 3. then we divide HpN = HpN/u->v = <H>/N
+// 4. we output that number to a file as
+// 	#1 beta   #2 <H>/N
+// 	   ...       ...
+// 5. then we reset HpN to zero and increment the beta by db
+// 6. we do it, until our beta reached bmax
+
+void
+progress_bar (int a, int b)
+{
+	int percent = 20 * a/b;
+	printf ("DONE: % 6d/%d (% 2d%%) [", a, b, (int) round (100.0*a/b));
+	
+	for (int i = 0; i <= percent-1; i++)
+		printf ("=");
+	if (round (100.0 * a/b) != 100)
+		printf (">");
+	for (int i = percent; i <= 18; i++)
+		printf (" ");
+	printf ("]\n\033[F\033[J");
+}
+
+/*
+void dump_animate (hod * u, FILE * fout)
 {
 	sprintf (u->file, "%s/%06d.txt", u->base, u->I);
 	u->fani = fopen (u->file, "w");
@@ -297,88 +301,48 @@ void dump_animate (harmonic * u)
 
 	fclose (u->fani);
 }
+*/
 
-void dump (harmonic * u)
+void
+solver (hod * u)
 {
-	dump_animate (u);
-	dump_regular (u);
-}
+	// we generate a formatted filename for our output
+	char * dat = (char *) malloc (60 * sizeof (char));
+	sprintf (dat, "N%d-M%d-L%d.txt",
+			u->N, u->M, (int) u->L);
 
-// 'a' out of 'b' things are done, we started at time 'start'
-void progress_bar (int a, int b, time_t * start)
-{
-	time_t now;
-	double dsec,
-	       left;
+	int part	= 0,
+	    total	= (u->bmax - u->bmin) / u->db;
 
-	if (start)
-	{
-		// we obtain current time
-		time (&now);
-
-		dsec = difftime (now, *start);
-		left = (b - a) * dsec/b;
-
-		printf ("ETA:% 3.2lfs | ", left);
-	}
-
-	int percent = 20 * a/b;
-	printf ("DONE: % 6d/%d (% 2d%%) [", a, b, (int) round (100.0*a/b));
-	
-	for (int i = 0; i <= percent-1; i++)
-		printf ("=");
-	if (round (100.0 * a/b) != 100)
-		printf (">");
-	for (int i = percent; i <= 18; i++)
-		printf (" ");
-	printf ("]\n\033[F\033[J");
-}
-
-void solver (harmonic * u)
-{
-	u->T = u->Tmin;
-	int max = (u->mode + 1) * (u->Tmax - u->Tmin)/u->dT;
-
-	printf ("Calculating ...\n");
+	// we open the file for writing, overwriting anything old
+	FILE * fout = fopen (dat, "w");
 	do
 	{
-		int r = 0;
-		for (u->k = 1; u->k <= u->v; u->k++)
-		{
-			r += step_harmonic (u);
-			energy_start (u);
-		}
+		int a = 0;
 
-		dump (u);
-		reset (u);
+		// we take some time to average the energy
+		for (int i = 0; i <= u->v-1; i++)
+			a += one_step (u);
 
-		printf ("r: % 6d/%d  ", u->v - r, u->v);
-		progress_bar (u->I-1, max, NULL);
-		u->I++;
-		u->T += u->dT;
+		// we still have to divide with iterations ...
+		u->HpN /= u->v;
 
-	} while (u->T < u->Tmax);
+		// we output the results
+		fprintf (fout, "%lf\t%lf\n", u->beta, u->HpN);
 
-	if (u->mode == 1)
-	{
-		do
-		{
-			int r = 0;
-			for (u->k = 1; u->k <= u->v; u->k++)
-			{
-				r += step_harmonic (u);
-				energy_start (u);
-			}
+		//
+		// or maybe even prepare them for animation -- not finished
+		//
 
-			dump (u);
-			reset (u);
+		// now we pave the way for the next step
+		u->HpN = 0;
+		u->beta += u->db;
+		part++;
 
-			printf ("r: % 6d/%d  ", u->v - r, u->v);
-			progress_bar (u->I-2, max, NULL);
-			u->I++;
-			u->T -= u->dT;
-		} while (u->T > u->Tmin);
-	}
+		// we note our progress
+		printf ("acceptance = %.2lf\t", (1.0 * a)/u->v);
+		progress_bar (part, total);
+	} while (u->beta <= u->bmax);
 }
 
 #endif

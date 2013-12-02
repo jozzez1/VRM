@@ -8,46 +8,36 @@
 
 int main (int argc, char ** argv)
 {
-	int mode       = 0,
-	    jobs       = 8,
-	    N          = 100,
-	    M          = 100,
-	    v          = 3000,
-	    length     = 12,
-	    animate    = 1,
+	int N          = 100,	// chain length
+	    M          = 100,	// time-cut length
+	    v          = 3000,	// ... measure time?
 	    arg;
 
-	double bmax    = 5,
-	       bmin    = 0,
-	       db      = 0.001,
-	       epsilon = 0.005,
-	       lambda  = 0;
+	double bmax    = 20,	// maximum beta
+	       bmin    = 0.01,	// minimum beta
+	       db      = 0.001,	// beta step
+	       epsilon = 0.05,	// MC step parameter
+	       lambda  = 0;	// anharmonic potential
 
 	struct option longopts[] =
 	{
-		{ "return",  no_argument,            &mode,        1 },
-		{ "jobs",    required_argument,      NULL,       'j' },
 		{ "size-M",  required_argument,      NULL,       'M' },
 		{ "size-N",  required_argument,      NULL,       'N' },
 		{ "wait-v",  required_argument,      NULL,       'v' },
-		{ "Tmax",    required_argument,      NULL,       'T' },
-		{ "Tmin",    required_argument,      NULL,       't' },
-		{ "dT",      required_argument,      NULL,       'd' },
+		{ "bmax",    required_argument,      NULL,       'B' },
+		{ "bmin",    required_argument,      NULL,       'b' },
+		{ "db",      required_argument,      NULL,       'd' },
 		{ "eps",     required_argument,      NULL,       'e' },
-		{ "lambda",  required_argument,      NULL,       'L' },
-		{ "length",  required_argument,      NULL,       'l' },
+//		{ "lambda",  required_argument,      NULL,       'L' },
+		{ "lambda",  no_argument,            NULL,       'L' },
 		{ "help",    no_argument,            NULL,       'h' },
-		{ "no-ani", no_argument,             &animate,     0 },
 		{ NULL,      0,                      NULL,         0 }
 	};
 
-	while ((arg = getopt_long (argc, argv, "j:M:N:v:T:t:d:e:L:l:h", longopts, NULL)) != -1)
+	while ((arg = getopt_long (argc, argv, "M:N:v:B:b:d:e:L:h", longopts, NULL)) != -1)
 	{
 		switch (arg)
 		{
-			case 'j':
-				jobs = atoi (optarg);
-				break;
 			case 'M':
 				M    = atoi (optarg);
 				break;
@@ -57,10 +47,10 @@ int main (int argc, char ** argv)
 			case 'v':
 				v    = atoi (optarg);
 				break;
-			case 'T':
+			case 'B':
 				bmax = atof (optarg);
 				break;
-			case 't':
+			case 'b':
 				bmin = atof (optarg);
 				break;
 			case 'd':
@@ -70,23 +60,22 @@ int main (int argc, char ** argv)
 				epsilon = atof (optarg);
 				break;
 			case 'L':
-				lambda  = atof (optarg);
+				// lambda  = atof (optarg);
+				lambda = 1;
 				break;
-			case 'l':
-				length  = atoi (optarg);
-				break;
+//			case 'l':
+//				length  = atoi (optarg);
+//				break;
 			case 'h':
 				printf ("===========================================\n");
 				printf ("List of commands:\n");
 				printf ("longopt    shortopt   default   description\n");
 				printf ("===========================================\n");
-				printf ("--return,             0         return back on the T scale\n");
-				printf ("--jobs,    -j:        8         jobs\n");
 				printf ("--size-M,  -M:        100       M\n");
 				printf ("--size-N,  -N:        100       N\n");
 				printf ("--wait-v,  -v:        3000      v\n");
-				printf ("--Tmax,    -T:        5         max beta\n");
-				printf ("--Tmin,    -t:        0         min beta\n");
+				printf ("--bmax,    -B:        20        max beta\n");
+				printf ("--bmin,    -b:        0.01      min beta\n");
 				printf ("--dT,      -d:        0.001     delta beta\n");
 				printf ("--eps,     -e:        0.005     epsilon\n");
 				printf ("--lambda,  -L:        1         lambda\n");
@@ -94,49 +83,45 @@ int main (int argc, char ** argv)
 				printf ("--help,    -h                   prints this list\n");
 				printf ("--no-ani,                       don't animate\n");
 				exit (EXIT_SUCCESS);
+			default:
+				printf ("Error! Unknown parameters. Try\n");
+				printf ("%s -h \tor\t %s --help\n",
+						argv[0], argv[0]);
+				exit (EXIT_FAILURE);
 		}
 	}
 
-	harmonic * u = (harmonic *) malloc (sizeof (harmonic));
-	init_harmonic (u, jobs, N, M, v, mode, db, bmin, bmax, epsilon, lambda);
+	hod * u = (hod *) malloc (sizeof (hod));
+	init_hod (u, N, M, bmin, bmax, db, v, epsilon, lambda);
 
 	solver (u);
 
+	/*
 	if (animate == 1)
 	{
 		printf ("Plotting ...\n");
 		int counter = 0;
-		char * stuff = malloc (40 * sizeof (char));
-		#pragma omp parallel shared (counter) private (stuff) num_threads (u->jobs)
+		char * stuff = malloc (60 * sizeof (char));
+		for (int k = 0; k <= u->I-1; k++)
 		{
-			#pragma omp for
-			for (int k = 0; k <= u->I-1; k++)
-			{
-				double T = k*u->dT + u->Tmin;
-				if (T > u->Tmax)
-					T = 2*u->Tmax - T;
-	
-				stuff = (char *) malloc (40 * sizeof (char));
-				sprintf (stuff, "./animate.sh %s %06d %d %lf",
-						u->base, k, u->N, T);
-				system (stuff);
-				free (stuff);
-	
-				#pragma omp critical
-				{
-					counter++;
-					progress_bar (counter, u->I-1, NULL);
-				}
-			}
-		}
+			double T = k*u->dT + u->Tmin;
+			if (T > u->Tmax)
+				T = 2*u->Tmax - T;
 
-		printf ("Done!\n");
+			sprintf (stuff, "./animate.sh %s %06d %d %lf",
+					u->base, k, u->N, T);
+			system (stuff);
 	
-		stuff = (char *) malloc (60 * sizeof (char));
+			counter++;
+			progress_bar (counter, u->I-1, NULL);
+		}
+		printf ("Done!\n");
+
 		sprintf (stuff, "./anime.sh %s %d %d %d", u->base, 1, length, u->I);
 		system (stuff);
 		free (stuff);
 	}
+	*/
 
 	destroy (u);
 
