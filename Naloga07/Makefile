@@ -1,4 +1,4 @@
-CC=gcc48
+CC=gcc
 PRGNAM=nal7
 SOURCE=prg7.c
 CPUTYPE=native

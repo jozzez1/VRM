@@ -1,10 +1,10 @@
-CC=clang
+CC=cc
 PRGNAM=nal5
 SOURCE=prg5.c
-CPUTYPE=corei7-avx
+CPUTYPE=native
 
 CFLAGS=-O3 -march=$(CPUTYPE) -pipe\
-       -Wall -pedantic-errors\
+       -pedantic-errors\
        -lm -lc -lgsl -lgslcblas\
        -I/usr/local/include\
        -L/usr/local/lib\
@@ -17,4 +17,4 @@ dbg:
 	$(CC) -o $(PRGNAM) $(SOURCE) $(CFLAGS) -g
 
 clean:
-	rm -rf T* J* test*
+	rm -rf T* J* H*
