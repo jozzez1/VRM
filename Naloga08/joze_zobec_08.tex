@@ -4,9 +4,26 @@
 \usepackage[T1]{fontenc}
 \usepackage{amsmath, amssymb, fullpage, bbm, float, caption, graphicx}
 
+\newcommand{\A}{
+	\ensuremath{\mathbf{A}}
+}
+
 \begin{document}
 
-\section{Uvod}
+\begin{center}
+\textsc{Vi\v sje ra\v cunske metode}\\
+\textsc{2012/13}\\[0.5cm]
+\textbf{7. naloga -- MPA in Schmidtov algoritem}
+\end{center}
+\begin{flushright}
+\textbf{Jo\v ze Zobec}
+\end{flushright}
+
+\section{Schmidtov algoritem in matri\v cno produktni nastavki}
+
+\subsection{Uvod}
+Navodila so opisana na spletu. Za uvod bomo zato najprej pogledali, kako do Heisenbergovega hamiltoniana.
+
 Imamo Heisenbergov hamiltonian za spinsko verigo (v odsotnostni magnetnega polja), ki ga poznamo že iz
 drugega poglavja (in raznih drugih kurzov):
 \[
@@ -40,7 +57,7 @@ Izračunajmo $\hat{h}^{(2)}_{1,2}$ v spinski bazi:
 	\end{bmatrix} = \frac{1}{4} h^{(2)}_{1,2}
 \]
 
-Zgornji indeks `2' v oklepaju, nas spomni, da to velja samo, kadar imamo trivialno verigo z dvema
+Zgornji indeks `2' v oklepaju, nas spomni, da to velja samo, kadar imamo trivialno verigo z zgolj dvema
 \v clenoma.
 
 Na tem mestu lahko brez izgube splošnosti redefiniramo $J \to J' = 4J$, zato, da se znebimo tistih
@@ -138,10 +155,12 @@ ena\v cbe~\eqref{hamilton}, le da mu pri\v stejemo popravek~\eqref{popravek}
 	\tilde{H}^{(n)} \equiv H^{(n)} + h^{(n)}_{n,1}
 \end{equation}
 
-\section{Rezultati}
+\subsection{Rezultati}
 
 Schmidtov algoritem sem preveril z matri\v cno-produktnimi nastavki, ki so mi preverjeno delovali
 (tj. ustrezno mno\v zene matrike $\mathbf{A}_{s_n}^{(n)}$ so mi dale nazaj prave koeficiente).
+
+\subsubsection{Schmidtov algoritem}
 
 Najprej bom predstavil rezultate, dobljene iz Heisenbergovega hamiltoniana, ki sem ga omenil v
 prej\v snjem poglavju. Grafa na sl.~\ref{1-kompakten} in~\ref{1-nekompakten} prikazujeta entropijo
@@ -178,8 +197,8 @@ neperiodi\v cen hamiltonian.
 	\label{1-neperiodicni-aji}
 \end{figure}
 
-Dokaz, da tisto res niso parabole sem naredil tako, da sem fital na verigo dol\v zine 12. Za limitne primere na robovih,
-tj. $|A|/n \in \{0,1\}$ sem res lahko vzel $0$, kar potrjuje tudi algoritem.
+Dokaz, da tisto res niso kvadratne parabole sem naredil tako, da sem fital na verigo dol\v zine 12. Za limitne primere na
+robovih, tj. $|A|/n \in \{0,1\}$ sem res lahko vzel $0$, kar potrjuje tudi algoritem.
 
 \v Ce je tisti izraz parabola, mora biti cela dru\v zina oblike $f(x;\alpha) = \alpha x(x-1)$, kjer je $x = |A|/n$. Ugibamo,
 da je kvadratna potenca premajhna in poizkusimo tudi s kvarti\v cnim nastavkom, $g(x;\alpha,\beta) = -\alpha(x-1/2)^4 + \beta$.
@@ -191,6 +210,48 @@ Ta se res bolj obnese.
 	\label{1-ni-parabola-a}
 \end{figure}
 
+\subsubsection{Matri\v cno produktni nastavki}
 
+Na\v se stanje $|\psi\rangle$ predstavimo s stolpcem
+\[
+	|\psi\rangle = \sum_{s_1,\ldots,s_n \in \{\uparrow,\downarrow\}} C_{s_1,s_2,\ldots,s_n} |s_1,\ldots,s_n\rangle
+\]
+
+kjer je $C_{s_1,\ldots,s_n} = \langle s_1,s_2,\ldots,s_n|\psi\rangle = C_{\underline{s}}$. Vsak koeficient
+$C_{\underline{s}}$ lahko predstavimo kot produkt matrik $\mathbf{A}^{(j)}_{s_j}$. Npr. koeficient
+$C_{\uparrow\downarrow\downarrow\downarrow}$ zapi\v semo kot
+\[
+	C_{\uparrow\downarrow\downarrow\downarrow} = \A^{(1)}_\uparrow\A^{(2)}_\downarrow\A^{(3)}_\downarrow\A^{(4)}_\downarrow
+\]
+
+Prav tako, morajo biti diagonalne matrike $\lambda^{(j)}$ enake Schmidtovim koeficientom za razcep $j = |A|$. To se izka\v ze,
+da je res: entropija prepletenosti mora biti enaka. Za periodi\v cni hamiltonian dobimo namre\v c iste kvarti\v cne parabole,
+kar vidimo na grafu~\ref{2-periodicni-aji}.
+
+\begin{figure}[H]\centering
+	\input{2-periodicni-aji.tex}
+	\caption{Dobimo isto kvarti\v cno parabolo, kot v prej\v snjem primeru, vendar ne moremo definirati skrajnih
+		robnih to\v ck, tj. $|A| = 0$ in $|A| = n$, kar je sicer v redu, saj brez biparticije ni entropije
+		prepletenosti.}
+	\label{2-periodicni-aji}
+\end{figure}
+
+Ker mora teorija delovati tudi za komplekesen primer, sem naredil isto za  naklju\v cno izbran normiran vektor. Njegove
+komponente so naklju\v cno izbrana Gaussovo porazdeljena \v stevila s te\v zi\v s\v cem v ni\v cli. Preverjal sem, ali
+dobim res pravi vektor nazak z rekonstrukcijo in ali dimenzija vektorja vpliva na natan\v cnost. To sem delal tako, da
+sem meril kot med vhodnim in izhodnim vektorjem -- $\alpha$ in razliko njunih norm $\Delta N$. Ugotovil sem, da je napaka
+neodvisna od dimenzije vektorja in da je $\alpha \sim 10^{-8}$ in $\Delta N \sim 10^{-16}$. Torej je metoda zelo natan\v cna.
+
+Graf~\ref{2-gaus} prikazuje kak\v sne entropije nam vrne Gaussov naklju\v cni vektor za razli\v cne izbire biparticije.
+Pri\v cakovali bi, da je brez reda.
+
+\begin{figure}[H]\centering
+	\input{2-gaus.tex}
+	\caption{Entropija prepletenosti je za naklju\v cni Gaussov vektor vse prej kot naklju\v cna. Spet vidimo
+		red. Ta graf bolj spominja na kvadrati\v cno parabolo kot prej\v snji, vendar vidimo, da raste bolj polo\v zno
+		in potem zelo hitro spremeni odvod, tako da to ni to. Opazimo lahko, da je naklju\v cno izbrano stanje bolj
+		prepleteno, kot osnovno stanje.}
+	\label{2-gaus}
+\end{figure}
 
 \end{document}

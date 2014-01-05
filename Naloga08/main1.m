@@ -10,8 +10,8 @@ fout3 = fopen ("1-non-and-compact.txt", "w+");	% every second spin
 printf ("Calculating ... ");
 for k = 2:6
 	% first we create our eigenvectors
-	vo = ground_state (k, 0);
-	vp = ground_state (k, 1);
+	vo = rand_state (k, 0);
+	vp = rand_state (k, 1);
 
 	% then we calculate entropies for different
 	% bi-partitions

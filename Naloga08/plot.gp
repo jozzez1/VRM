@@ -51,3 +51,16 @@ fit g(x) "1-periodic.txt" u 9:10 via b,c
 plot "1-periodic.txt" u 9:10 w lp title 'n = 12', f(x) lt -1 title 'fit $\propto x^2$', g(x) lt 3 title 'fit $\propto x^4$'
 unset output
 
+set title 'Entropija v MPA -- periodi\v cni primer'
+set output "2-periodicni-aji.tex"
+plot "2-periodic.txt" u 1:2 w lp title '$n = 12$'
+unset output
+
+h(x) = d*(x-0.5)**2 + e
+fit h(x) "nakljuc.txt" u 1:2 via d,e
+set title 'Entropija v MPA -- Gaussov vektor'
+set output "2-gaus.tex"
+plot "nakljuc.txt" u 1:2 w lp title '$n = 12$', h(x) lt -1 title 'fit $\propto x^2$'
+unset output
+
+
