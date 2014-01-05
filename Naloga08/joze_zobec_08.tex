@@ -1,0 +1,196 @@
+\documentclass[12pt, a4paper]{article}
+\usepackage[slovene]{babel}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{amsmath, amssymb, fullpage, bbm, float, caption, graphicx}
+
+\begin{document}
+
+\section{Uvod}
+Imamo Heisenbergov hamiltonian za spinsko verigo (v odsotnostni magnetnega polja), ki ga poznamo že iz
+drugega poglavja (in raznih drugih kurzov):
+\[
+	H = -J\sum_j \vec{S}_j \cdot \vec{S}_{j+1} = -J \sum_j \hat{h}_{j,j+1}.
+\]
+
+Hamiltonian smo razcepili na vsoto dvodelčnih hamiltonianov, ki se glase
+\[
+	\hat{h}_{j,j+1} = S_j^x S_{j+1}^x + S_j^y S_{j+1}^y + S_j^z S_{j+1}^z.
+\]
+
+Seveda, nam ta oblika ne diši preveč, spomnimo pa se, da spinski operatorji zadoščajo
+grupi SU(2) in zanje lahko poiščemo operatorje dviganja in spuščanja:
+\begin{align*}
+	S_j^+ &= S_j^x + iS_j^y,\\
+	S_j^- &= S_j^x - iS_j^y.
+\end{align*}
+
+To uporabimo na dvodelčnem hamiltonianu $\hat{h}_{j,j+1}$ in dobimo
+\[
+	\hat{h}_{j,j+1} = \frac{1}{2}\big(S^+_jS^-_{j+1} + S^-_jS^+_{j+1} + 2S^z_jS^z_{j+1}\big).
+\]
+
+Izračunajmo $\hat{h}^{(2)}_{1,2}$ v spinski bazi:
+\[
+	\hat{h}^{(2)}_{1,2} = \frac{1}{2 \cdot 2}\begin{bmatrix}
+		1 & 0 & 0 & 0 \\
+		0 &-1 & 2 & 0 \\
+		0 & 2 & -1& 0 \\
+		0 & 0 & 0 & 1
+	\end{bmatrix} = \frac{1}{4} h^{(2)}_{1,2}
+\]
+
+Zgornji indeks `2' v oklepaju, nas spomni, da to velja samo, kadar imamo trivialno verigo z dvema
+\v clenoma.
+
+Na tem mestu lahko brez izgube splošnosti redefiniramo $J \to J' = 4J$, zato, da se znebimo tistih
+nadle\v znih polovic in nam ostane samo matrika $h_{j,j+1}$. 
+
+Imamo anti-feromagnetno sklopitev, tj. J < 0. Nobenega razloga ni, zakaj ne bi bil kar $J = -1$.
+
+Popoln hamiltonian za več delcev je enak vsoti Kroneckerjevih produktov večih takih matrik
+$h^{(2)}_{1,2}$ z identitetami. Seveda deluje le za sodo število delcev (tj. za verige dolžine $
+= 2m$, $m \in \mathbb{N}$).
+
+Skratka, $n$-delčni hamiltonian $H^{(n)}$ dobimo kot
+\begin{equation}
+	H^{(n)} = \sum_{j = 1}^{n - 1} h^{(n)}_{j,j+1} = \sum_{j = 1}^{2m - 1} \mathbbm{1}_{2^{j-1}}
+	\otimes h^{(2)}_{1,2} \otimes \mathbbm{1}_{2^{2m - j - 1}}
+	\label{hamilton}
+\end{equation}
+
+Torej, na\v so matriko $4 \times 4$ vozimo po produktu identitet s korakom $2$. Za primer, ko $m = 2$,
+tj. verigo dol\v zine $4$, to pomeni:
+\[
+	H^{(4)} = \underbrace{h^{(2)}_{1,2}\otimes\mathbbm{1}_4}_{h^{(4)}_{1,2}} +
+		\underbrace{\mathbbm{1}_2\otimes h^{(2)}_{1,2}\otimes\mathbbm{1}_2}_{h^{(4)}_{2,3}} +
+		\underbrace{\mathbbm{1}_4\otimes h^{(2)}_{1,2}}_{h^{(4)}_{3,4}}
+\]
+
+Vendar kot vidimo, ta formula velja samo za odprte robne pogoje. Za periodi\v cne robne pogoje
+moramo razcepiti matriko $h^{(2)}_{1,2}$ na Kroneckerjev produkt matrik dimenzije $2 \times 2$, saj
+moramo za periodi\v cne robne pogoje dobiti \v clen oblike `$B \otimes \mathbbm{1}_4 \otimes A$',
+pri \v cemer smo predpostavili, da je $h^{(2)}_{1,2} = A \otimes B$.
+
+Razcep naredimo nekako takole: opazimo, da sta diagonalna bloka v matriki $h^{(2)}_{1,2}$ enaka
+$\sigma^z$ in $-\sigma^z$, izvendiagonalna bloka pa sta $2\sigma^+$ in $2\sigma^-$, tj. blo\v cno
+
+\[
+	h^{(2)}_{1,2} = \begin{bmatrix}
+		\sigma^z & 2\sigma^- \\
+		2\sigma^+ & -\sigma^z
+	\end{bmatrix} = 
+		\begin{bmatrix}
+			\sigma^z & 0 \\
+			0 & -\sigma^z
+		\end{bmatrix} + 2\begin{bmatrix}
+			0 & \sigma^- \\
+			\sigma^+ & 0
+		\end{bmatrix}.
+\]
+
+Takoj opazimo, da je prva matrika enaka $\sigma^z \otimes \sigma^z$. Drugo matriko pa moramo
+razcepiti \v se naprej:
+\[
+	\sigma^\pm = \frac{1}{2}\big(\sigma^x \pm i\sigma^y\big),
+\]
+
+\[
+	2\begin{bmatrix}
+		0 & \sigma^- \\
+		\sigma^+ & 0
+	\end{bmatrix} = 2 \cdot \frac{1}{2} \begin{bmatrix}
+		0 & \sigma^x - i\sigma^y \\
+		\sigma^x + i\sigma^y & 0
+	\end{bmatrix} = \begin{bmatrix}
+		0 & \sigma^x \\
+		\sigma^x & 0
+	\end{bmatrix} + \begin{bmatrix}
+		0 & -i\sigma^y \\
+		i \sigma^y & 0
+	\end{bmatrix} = \sigma^x \otimes \sigma^x + \sigma^y \otimes \sigma^y.
+\]
+
+Torej velja
+\[
+	h^{(2)}_{1,2} = \sum_{\lambda \in \{x,y,z\}} \sigma^\lambda \otimes \sigma^\lambda
+\]
+
+Za prej\v snji zgled, ko smo imeli verigo dol\v zine $4$, bi torej potrebovali \v se \v clen
+$h^{(4)}_{4,1}$. Tega lahko sedaj zapi\v semo kot
+\[
+	h^{(4)}_{4,1} = \sigma^x\otimes\mathbbm{1}_4\otimes\sigma^x +
+		\sigma^y\otimes\mathbbm{1}_4\otimes\sigma^y +
+		\sigma^z\otimes\mathbbm{1}_4\otimes\sigma^z
+\]
+
+Za verigo dol\v zine $n = 2m$ je to
+\begin{equation}
+	h^{(n)}_{n,1} \equiv \sum_{\lambda \in \{x,y,z\}} \sigma^\lambda \otimes
+	\mathbbm{1}_{4^{m - 1}} \otimes \sigma^\lambda
+	\label{popravek}
+\end{equation}
+
+Hamiltonian s periodi\v cnimi robnimi pogoji, $\tilde{H}^{(n)}$, je torej enak tistemu iz
+ena\v cbe~\eqref{hamilton}, le da mu pri\v stejemo popravek~\eqref{popravek}
+
+\begin{equation}
+	\tilde{H}^{(n)} \equiv H^{(n)} + h^{(n)}_{n,1}
+\end{equation}
+
+\section{Rezultati}
+
+Schmidtov algoritem sem preveril z matri\v cno-produktnimi nastavki, ki so mi preverjeno delovali
+(tj. ustrezno mno\v zene matrike $\mathbf{A}_{s_n}^{(n)}$ so mi dale nazaj prave koeficiente).
+
+Najprej bom predstavil rezultate, dobljene iz Heisenbergovega hamiltoniana, ki sem ga omenil v
+prej\v snjem poglavju. Grafa na sl.~\ref{1-kompakten} in~\ref{1-nekompakten} prikazujeta entropijo
+za simetri\v cno biparticijo v odvisnosti od dol\v cine verige.
+
+\begin{figure}[H]\centering
+	\input{1-kompakten.tex}
+	\caption{Kompaktna izbira po\v casi v povpre\v cju premo nara\v sca z dol\v cino verige.
+		Vidimo, da je za periodi\v cne robne pogoje entropija ve\v cja.}
+	\label{1-kompakten}
+\end{figure}
+
+\begin{figure}[H]\centering
+	\input{1-nekompakten.tex}
+	\caption{Nara\v scanje je sedaj bolj linearno kot prej. Vidimo, da imata premici isti naklon,
+		razlikujeta se zgolj za aditivno konstanto.}
+	\label{1-nekompakten}
+\end{figure}
+
+Poglejmo si tudi kako se graf spreminja v odvisnosti od razmerja particij v biparticiji za periodi\v cen in
+neperiodi\v cen hamiltonian.
+
+\begin{figure}[H]\centering
+	\input{1-periodicni-aji.tex}
+	\caption{Za periodi\v cni problem graf spominja na parabolo, simetri\v cno okrog $|A|/n = 1:2$. Vidimo, da je
+		tam entropija najve\v cja. V resnici to ni parabola, saj je vrh preve\v c zaobljen.}
+	\label{1-periodicni-aji}
+\end{figure}
+
+\begin{figure}[H]\centering
+	\input{1-neperiodicni-aji.tex}
+	\caption{Tudi v tem primeru dobimo v povpre\v cju parabolo -- dobimo dve paraboli. Lahko si mislimo, da imamo
+		"`lihe"' in "`sode"' biparticije. Vse sode le\v zijo na eni paraboli, vse lihe pa na drugi.}
+	\label{1-neperiodicni-aji}
+\end{figure}
+
+Dokaz, da tisto res niso parabole sem naredil tako, da sem fital na verigo dol\v zine 12. Za limitne primere na robovih,
+tj. $|A|/n \in \{0,1\}$ sem res lahko vzel $0$, kar potrjuje tudi algoritem.
+
+\v Ce je tisti izraz parabola, mora biti cela dru\v zina oblike $f(x;\alpha) = \alpha x(x-1)$, kjer je $x = |A|/n$. Ugibamo,
+da je kvadratna potenca premajhna in poizkusimo tudi s kvarti\v cnim nastavkom, $g(x;\alpha,\beta) = -\alpha(x-1/2)^4 + \beta$.
+Ta se res bolj obnese.
+
+\begin{figure}[H]\centering
+	\input{1-ni-parabola-a.tex}
+	\caption{Vidimo, da odvisnost od razmerja velikosti particij ni kvadratna, je pa verjetno kvarti\v cna.}
+	\label{1-ni-parabola-a}
+\end{figure}
+
+
+
+\end{document}
