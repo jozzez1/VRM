@@ -1,25 +1,28 @@
-function alpha = check (A)
-	x = rand (1,16);
+function [alpha, diffnorm] = check (A,v)
+	% with this function we check wheather or not we get the
+	% same result:
+	% ==============
+	% alpha    -- angle between two vectors
+	% normdiff -- difference in norms of the two
+	%
+	% the reconstructed vector from matrices 'A' will be called 'x'
 
-	[A, U, L, V, P] = matricize (x);
-	v(1) = A{1,1} * A{1,2} * A{1,3} * A{1,4};
-	v(2) = A{1,1} * A{1,2} * A{1,3} * A{2,4};
-	v(3) = A{1,1} * A{1,2} * A{2,3} * A{1,4};
-	v(4) = A{1,1} * A{1,2} * A{2,3} * A{2,4};
-	v(5) = A{1,1} * A{2,2} * A{1,3} * A{1,4};
-	v(6) = A{1,1} * A{2,2} * A{1,3} * A{2,4};
-	v(7) = A{1,1} * A{2,2} * A{2,3} * A{1,4};
-	v(8) = A{1,1} * A{2,2} * A{2,3} * A{2,4};
-	v(9) = A{2,1} * A{1,2} * A{1,3} * A{1,4};
-	v(10)= A{2,1} * A{1,2} * A{1,3} * A{2,4};
-	v(11)= A{2,1} * A{1,2} * A{2,3} * A{1,4};
-	v(12)= A{2,1} * A{1,2} * A{2,3} * A{2,4};
-	v(13)= A{2,1} * A{2,2} * A{1,3} * A{1,4};
-	v(14)= A{2,1} * A{2,2} * A{1,3} * A{2,4};
-	v(15)= A{2,1} * A{2,2} * A{2,3} * A{1,4};
-	v(16)= A{2,1} * A{2,2} * A{2,3} * A{2,4};
+	[nr, nc] = size (v);
+	N = log2 (nc)/2;
+	for i = 1:4**N
+		T	= 1;
+		k	= dec2bin (i-1, 2*N);
+		for j = 1:2*N
+			b = T * A{bin2dec(k(1,j))+1, j};
+			T = reshape(b, size(b));
+		end
+		x (i) = T;
 
-	alpha = acos((x * v')/sqrt((x * x') * (v * v')));
+		clear b T;
+	end
+
+	alpha	= norm(acos ((x * v')/(norm(x) * norm(v))));
+	diffnorm= norm (x - v);
 
 	return;
 endfunction

@@ -8,7 +8,7 @@ function [A, L] = matricize (psi)
 	P{1} = psi;
 	for i = 1:n - 1
 		[U{i}, L{i}, V{i}] = factorize (P{i});
-		P{i+1} = L{i} * V{i}.';
+		P{i+1} = L{i} * ctranspose(V{i});
 
 		[nr, nc] = size(U{i});
 		
