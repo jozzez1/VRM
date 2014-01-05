@@ -8,5 +8,6 @@ blas    -- Basic Linear Algebra Subprograms
 gsl     -- GNU Scientific Library
 gnuplot -- needed to run the plotter and animation scripts
 mplayer -- to create animations with mencoder and play them
+octave  -- for DMRG related problems
 
 texlive -- to create the .pdf files of the reports
