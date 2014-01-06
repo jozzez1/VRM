@@ -22,7 +22,8 @@
 \section{Schmidtov algoritem in matri\v cno produktni nastavki}
 
 \subsection{Uvod}
-Navodila so opisana na spletu. Za uvod bomo zato najprej pogledali, kako do Heisenbergovega hamiltoniana.
+Navodila so opisana na spletu v profesorjevi skripti in jih zaradi tega nima smisla ponavljati. Za uvod bomo zato najprej
+pogledali, kako do Heisenbergovega hamiltoniana v matri\v cni obliki, kjer imamo za bazo spinske konfiguracije.
 
 Imamo Heisenbergov hamiltonian za spinsko verigo (v odsotnostni magnetnega polja), ki ga poznamo že iz
 drugega poglavja (in raznih drugih kurzov):
@@ -185,10 +186,13 @@ neperiodi\v cen hamiltonian.
 
 \begin{figure}[H]\centering
 	\input{1-periodicni-aji.tex}
-	\caption{Za periodi\v cni problem graf spominja na parabolo, simetri\v cno okrog $|A|/n = 1:2$. Vidimo, da je
+	\caption{Za periodi\v cni problem graf spominja na parabolo, simetri\v cno okrog $|A|/n = 1/2$. Vidimo, da je
 		tam entropija najve\v cja. V resnici to ni parabola, saj je vrh preve\v c zaobljen.}
 	\label{1-periodicni-aji}
 \end{figure}
+
+\v Se ena zanimivost je ta, (na grafu se ne vidi), da je za vse dol\v zine verige vrednost entropije na robovih (tj.
+za izbiro biparticije, ko je $|A| = 1$ oz. $|A| = n-1$, maksimalna mo\v zna. V tem primeru je to $S = \ln 2 \approx 0.69315$.
 
 \begin{figure}[H]\centering
 	\input{1-neperiodicni-aji.tex}
@@ -238,20 +242,31 @@ kar vidimo na grafu~\ref{2-periodicni-aji}.
 
 Ker mora teorija delovati tudi za komplekesen primer, sem naredil isto za  naklju\v cno izbran normiran vektor. Njegove
 komponente so naklju\v cno izbrana Gaussovo porazdeljena \v stevila s te\v zi\v s\v cem v ni\v cli. Preverjal sem, ali
-dobim res pravi vektor nazak z rekonstrukcijo in ali dimenzija vektorja vpliva na natan\v cnost. To sem delal tako, da
+dobim res pravi vektor nazaj z rekonstrukcijo in ali dimenzija vektorja vpliva na natan\v cnost. To sem delal tako, da
 sem meril kot med vhodnim in izhodnim vektorjem -- $\alpha$ in razliko njunih norm $\Delta N$. Ugotovil sem, da je napaka
 neodvisna od dimenzije vektorja in da je $\alpha \sim 10^{-8}$ in $\Delta N \sim 10^{-16}$. Torej je metoda zelo natan\v cna.
 
 Graf~\ref{2-gaus} prikazuje kak\v sne entropije nam vrne Gaussov naklju\v cni vektor za razli\v cne izbire biparticije.
-Pri\v cakovali bi, da je brez reda.
+Ker je stanje popolnoma naklju\v cno izbrano, pri\v cakujemo, da bo stopnja nereda vi\v sja -- blizu maksimalne entropije
+prepletenosti. Graf~\ref{2-gaus} zato prikazuje tudi maksimalno entropijo. Dol\v zina verige je $n = 12$.
+
+Schmidtovi rangi za spinsko verigo dol\v zine $n$ so
+\[
+	M_j^{(n)} = 2^{n/2} 2^{-|j - n/2|}.
+\]
+Zgornja meja entropije prepletenosti je potem
+\[
+	S^{(n)}_{j,\text{max}} = \ln M^{(n)}_j = \bigg(\frac{n}{2} - \Big|j - \frac{n}{2}\Big|\bigg)\ln 2.
+\]
 
 \begin{figure}[H]\centering
 	\input{2-gaus.tex}
-	\caption{Entropija prepletenosti je za naklju\v cni Gaussov vektor vse prej kot naklju\v cna. Spet vidimo
-		red. Ta graf bolj spominja na kvadrati\v cno parabolo kot prej\v snji, vendar vidimo, da raste bolj polo\v zno
-		in potem zelo hitro spremeni odvod, tako da to ni to. Opazimo lahko, da je naklju\v cno izbrano stanje bolj
-		prepleteno, kot osnovno stanje.}
+	\caption{Opazimo lahko, da je naklju\v cno izbrano stanje bolj prepleteno, kot osnovno stanje. Na robovih
+		grafa je entropija maksimalna, potem pa proti simetrijskemu sredi\v scu \v cedalje bolj odstopa.
+		Oblika krivulje spominja na Bezierovo krivuljo.}
 	\label{2-gaus}
 \end{figure}
+
+Verjetno so vse krivulje, kar smo jih dobili v resnici Bezierove, le da so nekatere bolj zglajene pri vrhu, druge pa ne.
 
 \end{document}

@@ -10,8 +10,8 @@ fout3 = fopen ("1-non-and-compact.txt", "w+");	% every second spin
 printf ("Calculating ... ");
 for k = 2:6
 	% first we create our eigenvectors
-	vo = rand_state (k, 0);
-	vp = rand_state (k, 1);
+	vo = ground_state (k, 0);
+	vp = ground_state (k, 1);
 
 	% then we calculate entropies for different
 	% bi-partitions
@@ -28,6 +28,13 @@ printf ("Done!\n");
 
 % make the output to the respective files
 printf ("Dumping results ... ");
+for k = 2:6
+	fprintf (fout1, "%f %f ", 0, 0);
+	fprintf (fout2, "%f %f ", 0, 0);
+end
+fprintf (fout1, "\n");
+fprintf (fout2, "\n");
+
 for k = 2:6
 	fprintf (fout1, "%f %f ", 0.5/k, Ep(k,1));
 	fprintf (fout2, "%f %f ", 0.5/k, Eo(k,1));
@@ -50,6 +57,17 @@ for a = 2:11
 	fprintf (fout1, "\n");
 	fprintf (fout2, "\n");
 end
+
+for k = 2:5
+	fprintf (fout1, "%f %f ", 2, 2);
+	fprintf (fout2, "%f %f ", 2, 2);
+end
+fprintf (fout1, "%f %f ", 1, 0);
+fprintf (fout2, "%f %f ", 1, 0);
+fprintf (fout1, "\n");
+fprintf (fout2, "\n");
+
+
 
 fclose (fout1);
 fclose (fout2);
