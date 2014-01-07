@@ -12,7 +12,7 @@ function K = matrixB (B, L, k, j, b, N)
 	if j <= 2*N - 1
 		lambda = L{j};
 	elseif j == 2*N
-		lambda = 1;
+		lambda = sqrt(sumsq(diag(L{j-1})));
 	endif
 
 	K = 0;

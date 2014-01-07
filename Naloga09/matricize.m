@@ -35,6 +35,9 @@ function [B, L] = matricize (psi)
 		B{2,i} = Linv * A {2,i};
 	end
 
+	% final lambda has to be equal to the vector norm
+	L{n} = sqrt(sumsq (diag(L{n-1})));
+
 	clear A U V;
 
 	return;
