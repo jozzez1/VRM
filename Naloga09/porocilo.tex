@@ -1,0 +1,208 @@
+\documentclass[12pt, a4 paper]{article}
+\usepackage[slovene]{babel}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath, amssymb, bbm}
+
+\newcommand{\e}{
+	\ensuremath{\mathrm{e}}
+}
+
+\newcommand{\ch}{
+	\operatorname{ch}
+}
+
+\newcommand{\sh}{
+	\operatorname{sh}
+}
+
+\renewcommand{\d}{
+	\ensuremath{\mathrm{d}}
+}
+
+\begin{document}
+
+\section{Uvod}
+
+Valovna funkcija pri \v casu $t$ se zapi\v se lahko kot
+\[
+	|\psi(t)\rangle = \e^{-itH} |\psi(t = 0)\rangle
+\]
+
+\v Ce zelimo isto stanje dobiti pri neki inverzni temperaturi $\beta$, je pravilni pristop, da $\beta$ obravnavamo
+kot negativni imaginarni \v cas, tj.
+
+\[
+	|\psi\rangle_{\beta} = |\psi(-i\beta)\rangle = \e^{(-i\beta)(-i H)}|\psi(t = 0)\rangle = \e^{-\beta H}
+		|\psi(\beta=0)\rangle.
+\]
+
+Iz prej\v snje naloge se spomnimo, da lahko vse ugotovimo iz dvodel\v cnega hamiltoniana, $h^{(2)}_{1,2}$. V soglasju s tem
+bomo definirali dvodel\v cni propagator:
+\[
+	U^{(2)}(\beta) = \exp\Big({-\beta h^{(2)}_{1,2}}\Big) = \exp\bigg(-\beta\sum_{\lambda \in \{x,y,z\}}\sigma^\lambda
+		\otimes \sigma^\lambda\bigg).
+\]
+
+Ker matrike $\sigma^\lambda \otimes \sigma^\lambda$ med seboj komutirajo $\forall \lambda$, lahko izraz zapi\v semo kot
+produkt treh matrik (vi\v sji \v cleni razvoja BCH so enaki ni\v c)
+
+\begin{equation}
+	U^{(2)}(\beta) \equiv \prod_{\lambda \in \{x,y,z\}} \exp\big(-\beta \sigma^\lambda \otimes \sigma^\lambda\big).
+\end{equation}
+
+Razvoj lepo konvergira in velja
+
+\[
+	\Big(\sigma^\lambda \otimes \sigma^\lambda\Big)^n = \left\{
+		\begin{array}{cc}
+			\mathbbm{1}, & n = 2m, m \in \mathbb{N} \\
+			\sigma^\lambda \otimes \sigma^\lambda, & n \in 2m - 1, m \in \mathbb{N}
+		\end{array}
+	\right.
+\]
+
+Ko to upo\v stevamo, ugotovimo, da je
+\[
+	U^{(2)}(\beta) = \e^{-\beta h^{(2)}_{1,2}} = \e^{\beta}\begin{bmatrix}
+		\e^{-2\beta} & 0 & 0 & 0\\
+		0 & \ch(2\beta) & -\sh(2\beta) & 0 \\
+		0 & -\sh(2\beta) & \ch(2\beta) & 0 \\
+		0 & 0 & 0 & e^{-2\beta}
+	\end{bmatrix}
+\]
+
+Spinska korelacija je definirana kot
+\[
+	C_{jk} \sim \langle \sigma_j^z \sigma_k^z \rangle = \langle \psi| \sigma_j^z \sigma_k^z |\psi \rangle,
+\]
+
+kjer je o\v citno
+\[
+	\sigma_j^z \equiv \mathbbm{1}_{2^{j-1}} \otimes \sigma^z \otimes \mathbbm{1}_{2^{n-j}}.
+\]
+
+Na\v s na\v crt je, da bomo uporabili ena\v cbe (76), (77), (78) in (79) iz skripte. Torej potrebujemo matrike
+$\tilde{\mathbf{A}}^{(j)}_{s_j}$, ki generirajo $\psi^*_{s_1,s_2,\ldots,s_n}$. Trdimo, da $\tilde{\mathbf{A}}^{(j)}_{s_j} =
+\big(\mathbf{A}^{(j)}_{s_j}\big)^*$, kar lahko zlahka doka\v zemo:
+
+\begin{align*}
+	\psi_{s_1,s_2,\ldots,s_n} &= \mathbf{A}^{(1)}_{s_1} \mathbf{A}^{(2)}_{s_2} \cdots \mathbf{A}^{(n)}_{s_n} \\
+	\psi^*_{s_1,s_2,\ldots,s_n} &= \Big(\mathbf{A}^{(1)}_{s_1} \cdots \mathbf{A}^{(n)}_{s_n}\Big)^*
+\end{align*}
+
+Na tem mestu bi sicer lahko rekli, da je $\psi^*_{s_1,s_2,\ldots,s_n}$ skalar in da je kompleksno konjugiranje skalarja
+enakovredno hermitskemu konjugiranju (tj. hermitiranju) vendar tega ne smemo, saj bi nam to obrnilo vrstni red mno\v zenja,
+\v cesar pa ne smemo! Mno\v zimo namre\v c urejeno z "`leve proti desni"'. Tj. zgornji izraz enostavno zapi\v semo kot
+
+\begin{align*}
+	\psi^*_{s_1,s_2,\ldots,s_n} &= \big(\mathbf{A}^{(1)}_{s_1}\big)^* \big(\mathbf{A}^{(2}_{s_2}\big)^* \cdots
+		\big(\mathbf{A}^{(n)}_{s_n}\big)^* \\
+		&= \tilde{\mathbf{A}}^{(1)}_{s_1} \cdots \tilde{\mathbf{A}}^{(n)}_{s_n}.
+\end{align*}
+
+Ta produkt je \v ze urejen po spinih, vidimo da je res
+\[
+	\tilde{\mathbf{A}}^{(j)}_{s_j} \equiv \big(\mathbf{A}^{(j)}_{s_j}\big)^* = \mathbf{A}^{(j)}_{s_j}{}^*
+\]
+
+Na\v s operator $O_{s,s'}$ je kar $\sigma^z$. Iz njega moramo dobiti operatorje $\mathbf{V}^{(j)}$ iz ena\v cbe (77). Dobiti
+jih je precej enostavno. Imamo vsoto po \v stirih elementih. Od tega sta dva enaka ni\v c, saj $\sigma^z_{\uparrow\downarrow}
+= \sigma^z_{\downarrow\uparrow} = 0$. Torej
+
+\begin{align}
+	\mathbf{V}^{(j)} &= \sigma^z_{\downarrow\downarrow} \mathbf{A}^{(j)}_{\downarrow}{}^* \otimes
+		\mathbf{A}^{(j)}_{\downarrow} + \sigma^z_{\uparrow\uparrow} \mathbf{A}^{(j)}_{\uparrow}{}^*
+		\otimes \mathbf{A}^{(j)}_{\uparrow} = \notag \\
+		&= \mathbf{A}^{(j)}_{\downarrow}{}^* \otimes \mathbf{A}^{(j)}_{\downarrow} - \mathbf{A}^{(j)}_\uparrow{}^*
+		\otimes \mathbf{A}^{(j)}_\uparrow.
+\end{align}
+
+Analogno lahko vidimo, da $\mathbf{L} \equiv \mathbf{T}^{(1)}$ in $\mathbf{R} \equiv \mathbf{T}^{(n)}$ in
+
+\begin{align}
+	\mathbf{T}^{(j)} = \mathbf{A}^{(j)}_\downarrow{}^* \otimes \mathbf{A}^{(j)}_\downarrow +
+		\mathbf{A}^{(j)}_\uparrow{}^* \otimes \mathbf{A}^{(j)}_\uparrow .
+\end{align}
+
+Torej je $\langle \sigma^z_j \sigma^z_k \rangle$
+
+\[
+	\langle \psi |\sigma^z_j \sigma^z_k | \psi\rangle = \mathbf{T}^{(1)} \cdots \mathbf{T}^{(j-1)} \mathbf{V}^{(j)}
+		\mathbf{T}^{(j+1)} \cdots \mathbf{T}^{(k-1)} \mathbf{V}^{(k)} \mathbf{T}^{(k+1)}\cdots \mathbf{T}^{(n)},
+\]
+
+pri \v cemer moramo biti na robne pogoje, tj. $2 \leq j < k \leq n-1$. Nimamo periodi\v cnih robnih pogojev, torej nimamo
+prave translacijske simetrije tudi za naklju\v cno \v zrebane vektorje. Vendar pa moramo ta izraz izpovpre\v citi po
+nekem \v casu, tj.
+
+\[
+	C_{ij}(\beta) \equiv \lim_{t \to \infty} \frac{1}{t}\int_0^t \d \tau \langle \psi_\beta(\tau)|\sigma_j^z\sigma_k^z
+		|\psi_\beta(\tau)\rangle
+\]
+
+\v Ce bomo za\v cetno stanje dovolj ohladili ($\beta \to \infty$) bomo slej, ko prej dosegli osnovno stanje (fizikalna
+interpretacija je o\v citna, matemati\v cno pa je tudi res, saj je po absolutni vrednosti za na\v s hamiltonian vedno
+najve\v cja lastna vrednost osnovnega stanja, kar pomeni, da v bistvu i\v s\v cemo osnovno stanje s poten\v cno metodo).
+
+Korelacijska funkcija osnovnega stanja je potem kar
+
+\[
+	C_{ij}^\infty = C_{ij}(\beta \to \infty) = \lim_{t \to \infty} \frac{1}{t} \int_0^t \d\tau \lim_{\beta \to \infty}
+		\langle\psi_\beta(\tau)|\sigma_j^z\sigma_k^z|\psi_\beta(\tau)\rangle.
+\]
+
+Vrstni red limitiranja je tu pomemben. Najprej moramo limitirati $\beta$, saj moramo na\v se naklju\v cno stanje najprej
+ohladiti in \v sele potem povpre\v citi po \v casu. Stanje je treba sproti \v se normirati, tj. za splo\v sni primer se izraz
+glasi
+
+\begin{equation}
+	C_{ij}^\infty = C_{ij}(\beta \to \infty) = \lim_{t \to \infty}\frac{1}{t}\int_0^t \d\tau \lim_{\beta \to \infty}
+		\frac{\langle\psi_\beta(\tau)|\sigma^z_j\sigma^z_k|\psi_\beta(\tau)\rangle}
+		{\langle\psi_\beta(\tau)|\psi_\beta(\tau)\rangle}
+\end{equation}
+
+Vendar, pa je osnovno stanje lastno stanje in se ne spreminja s \v casom, torej ni treba povpre\v citi po \v casu.
+
+\v Ce se sedaj posvetimo \v se nalogi z dvema zvezdicama, vidimo, da moramo vzeti za za\v cetno stanje bodisi
+\[
+	|\psi\rangle = |\underbrace{\uparrow\uparrow\ldots\uparrow}_{m}\underbrace{\downarrow\downarrow\ldots\downarrow}_{m}
+		\rangle,
+\]
+bodisi
+\[
+	|\psi\rangle = |\underbrace{\downarrow\downarrow\ldots\downarrow}_{m}\underbrace{\uparrow\uparrow\ldots\uparrow}_{m}
+		\rangle,
+\]
+kjer je na\v sa veriga dolga $n = 2m$ spinov. Kateri indeks to predstavlja, \v ce spine uredimo v binarno (npr. $\uparrow$
+predstavlja $1$, in $\downarrow = 0$?). Naj se to zgodi pri indeksu $\Lambda$.
+
+Definirajmo
+\begin{multline}
+	S_+^{(m)} = \overbrace{11\ldots1}^{m}\overbrace{00\ldots0}^{m}{}_2 = 2^{2m-1} + 2^{m-2} + \ldots + 2^m = \\
+		2^m(1 + 2 + 4 + \ldots + 2^{m-1}) = 2^m (2^m - 1).
+\end{multline}
+
+Zgornji izraz v oklepaju bi potemtakem ustrezal
+\begin{equation}
+	S_-^{(m)} = \overbrace{00\ldots0}^{m}\overbrace{11\ldots1}^{m}{}_2 = 1 + 2 + \ldots + 2^{m-1} = 2^m-1.
+\end{equation}
+
+Imamo torej dve mo\v znosti, za izbiro osnovnega stanja, ki je
+\[
+	\sum_{\underline{s} = \downarrow}^{\uparrow} |\psi_{\underline{s}}\rangle \delta_{\underline{s}, \Lambda},
+\]
+kjer je $\Lambda \in \{S^{(m)}_+, S^{(m)}_-\}$
+
+Dvodel\v cni \v casovni propagator za feromagnet se napi\v se kot
+\[
+	U^{(2)}_\text{fer}(t) = \e^{-it}\cos(2t)\mathbbm{1}_4 + i\e^{-it}\sin(2t) \begin{bmatrix}
+		1 &  &  &  \\
+		 & 0 & 1 &  \\
+		 & 1 & 0 &  \\
+		 &  &  & 1 \end{bmatrix},
+\]
+
+kar je v bistvu $U^{(2)}(\beta \to -it)$.
+
+\end{document}
