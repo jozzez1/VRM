@@ -1,8 +1,10 @@
-function [E, B, L] = energize (v, bmax, number_of_steps)
+function [E, B, L] = energize (v, bmax, number_of_steps, M)
 	[nr, nc] = size(v);
 	N = log2(nc)/2;
 
-	[B, L] = matricize (v);
+	% M is truncation parameter, M > 1
+
+	[B, L] = matricize (v, M);
 
 	bstep = bmax/number_of_steps;
 
@@ -27,17 +29,24 @@ function [E, B, L] = energize (v, bmax, number_of_steps)
 	Ufull_p5 = createU (p5 * bstep);
 
 	report = fopen ("report.dat", "w+");
+	report1= fopen("report1.dat", "w+");
 	for k = 1:number_of_steps
 
-		[B, L] = fullstep (Uhalf_p1, Ufull_p1, B, L, N);
-		[B, L] = fullstep (Uhalf_p2, Ufull_p2, B, L, N);
-		[B, L] = fullstep (Uhalf_p3, Ufull_p3, B, L, N);
-		[B, L] = fullstep (Uhalf_p4, Ufull_p4, B, L, N);
-		[B, L] = fullstep (Uhalf_p5, Ufull_p5, B, L, N);
+		[B, L] = fullstep (Uhalf_p1, Ufull_p1, B, L, N, M);
+		[B, L] = fullstep (Uhalf_p2, Ufull_p2, B, L, N, M);
+		[B, L] = fullstep (Uhalf_p3, Ufull_p3, B, L, N, M);
+		[B, L] = fullstep (Uhalf_p4, Ufull_p4, B, L, N, M);
+		[B, L] = fullstep (Uhalf_p5, Ufull_p5, B, L, N, M);
 
-		fprintf (report, "%f\t%f\n", bstep * k, log(altnorm(B, L, N)));
+		norma = altnorm (B, L, N);
+		b = bstep * k;
+		fprintf (report, "%f\t%f\n", b, log(norma));
+		if b >= 3;
+			fprintf (report1, "%f\t%f\n", b, log(norma));		
+		endif
 	end
 	fclose (report);
+	fclose (report1);
 
 	norma = altnorm (B, L, N);
 	E = (-1.0/bmax) * log (norma);

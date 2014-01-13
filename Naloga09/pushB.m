@@ -1,4 +1,4 @@
-function [Bnew, Lnew] = pushB (mU, j, B, L)
+function [Bnew, Lnew] = pushB (mU, j, B, L, M)
 	% first we create the matrices Bjj (for interaction)
 	for k = 1:4
 		Bjj {k} = createBnew (mU, k, j, B, L);
@@ -41,6 +41,9 @@ function [Bnew, Lnew] = pushB (mU, j, B, L)
 	Bnew{2,j+1} = V(:,nc/2 + 1:nc);
 
 	Lnew{j} = D;
+
+	[nr, nc] = size(L);
+	[Bnew, Lnew] = truncate (Bnew, Lnew, (nc+1)/2, M);
 
 	return;
 endfunction

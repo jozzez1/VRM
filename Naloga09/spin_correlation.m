@@ -1,10 +1,10 @@
-function C = spin_correlation (B, L, N)
+function C = spin_correlation (B, L, N, M)
 	% B, L correspond to a unnormalized state -- we have to normalize it
 	v = reconstruct (B, L, N);
 	v = v ./ norm(v);
 	
 	% now we take the new matrices B, L
-	[B, L] = matricize (v);
+	[B, L] = matricize (v, M);
 
 	% and now's the time for the real fun
 	T = matrixT (B, L, N);
