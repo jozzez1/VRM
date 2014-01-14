@@ -24,6 +24,11 @@
 	\operatorname{rang}
 }
 
+\captionsetup{
+	width=0.8\textwidth,
+	labelfont=it
+}
+
 \begin{document}
 
 \section{Implementacija postopka TEBD}
@@ -53,8 +58,8 @@ Razvoj lepo konvergira in velja
 \[
 	\Big(\sigma^\lambda \otimes \sigma^\lambda\Big)^n = \left\{
 		\begin{array}{cc}
-			\mathbbm{1}, & n = 2m, m \in \mathbb{N} \\
-			\sigma^\lambda \otimes \sigma^\lambda, & n \in 2m - 1, m \in \mathbb{N}
+			\mathbbm{1}; & n = 2m, m \in \mathbb{N} \\
+			\sigma^\lambda \otimes \sigma^\lambda; & n = 2m - 1, m \in \mathbb{N}
 		\end{array}
 	\right.
 \]
@@ -221,6 +226,8 @@ Pomembno je kdaj re\v zemo. Ugotovil sem, da dobimo najbolj\v se rezultate, \v c
 Trotter-Suzukijevo shemo, za\v cetni MPA pa pustimo tak, kot je. \v Ce namre\v c prire\v zemo \v ze za\v cetku, bomo dobili
 pribli\v zno pol ni\v zjo energijo.
 
+Re\v zemo lahko tako, da $2^m > M > 1$, za verigo dol\v zine $n = 2m$.
+
 \subsubsection{Trotter-Suzuki}
 
 Za propagacijo uporabimo simplekti\v cni propagator Trotter-Suzuki. Za \v casovno propagacijo (domenska stena) uporabimo kar
@@ -241,21 +248,125 @@ $\mathcal{N}(\beta_i) \equiv \sqrt{\langle\psi_{\beta_i}|\psi_{\beta_i}\rangle}$
 \[
 	-E_0\beta_i + \delta = \ln\mathcal{N}(\beta_i),
 \]
-tj. na koncu $E_0$ in $\delta$ dobimo npr. z linearno regresijo (oz. v mojem primeru z minimizacijo napake prek
-Marqart-Levenbergovega algoritma, ki da bolj\v se rezultate).
+tj. na koncu $E_0$ in $\delta$ dobimo npr. z linearno regresijo oz. v mojem primeru z minimizacijo napake prek
+Marqart-Levenbergovega algoritma, ki da bolj\v se rezultate. Minimizacijo sem izvajal prek programa \texttt{gnuplot}, ki
+ga uporabljam tudi sicer za izris grafov. Slika~\ref{energija2} prikazuje primer kako se spreminja `$-\ln\mathcal{N(\beta)}$' z
+inverzno temperaturo $\beta$. Prikazal sem le en graf, saj so ostali isti, le smerni koeficient premice je druga\v cen.
 
-\subsection{Spinska korelacijska metrika}
+\begin{figure}[H]\centering
+	\input{energija-2-0.tex}
+	\caption{Ohlajanje verige dol\v zine $4$ brez rezanja matrik.}
+	\label{energija2}
+\end{figure}
+
+\begin{table}[H]\centering
+	\caption{Ta tabela prikazuje dobljeno energijo osnovnega stanja za razli\v cne izbire rezanja, $M$
+		in za razli\v cne dol\v zine verige. Za primerjavo je poleg tudi logaritem odstopanja od vrednosti,
+		dobljene diagonalizacijo matrike. $M = 0$ pomeni, da matrik nismo prirezali. Vidimo, da odre\v zemo
+		polovico Schmidtovih koeficientov in \v se vedno dobimo presenetljivo dobre rezultate.}
+	\vspace{6pt}
+	\begin{tabular}{c|c|c|c}
+		$n$ & $M$ & $E_0$ & $\log_{10}\big|E_0 - E_0^\text{diag}\big|$ \\
+		\hline
+		$4$ & $0\ (4)$ & $-6.4641$ & $-5.79$ \\
+		    & $2$ & $-6.1582$ & $-0.51$ \\
+		\hline
+		$6$ & $0\ (8)$ & $-9.4743$ & $-5.81$ \\
+		    & $7$ & $-9.4723$ & $-2.97$ \\
+		    & $6$ & $-9.9720$ & $-0.60$ \\
+		    & $2$ & $-9.2664$ & $-0.15$ \\
+		\hline
+		$8$ & $0\ (16)$ & $-13.4997$ & $-4.52$ \\
+		    & $15$ & $-13.4997$ & $-4.52$ \\
+		    & $11$ & $-13.4997$ & $-4.52$ \\ 
+		    & $8$ & $-13.4990$ & $-3.14$ \\
+		    & $4$ & $-13.4311$ & $-1.16$ \\
+		    & $2$ & $-12.3790$ & $0.05$ \\
+		\hline
+		$10$ & $0\ (32)$ & $-17.0321$ & $-4.39$ \\
+		     & $4$ & $-16.8549$ & $-0.75$ \\
+		     & $8$ & $-16.9405$ & $-1.04$ \\
+		     & $12$ & $-17.0183$ & $-1.86$ \\
+		     & $16$ & $-17.0321$ & $-4.39$ \\
+		\hline
+		$12$ & $0\ (64)$ & $-20.5684$ & $-4.43$ \\
+		     & $4$ & $-20.2323$ & $-0.47$ \\
+		     & $8$ & $-20.2677$ & $-0.52$ \\
+		     & $12$ & $-20.4912$ & $-1.11$ \\
+		     & $16$ & $-20.5150$ & $-1.27$ \\
+		     & $24$ & $-20.5651$ & $-2.49$ \\
+		     & $32$ & $-20.5684$ & $-4.43$
+	\end{tabular}
+	\label{tab1}
+\end{table}
+
+\subsection{Spinska korelacijska matrika}
 
 V \v casovno propagacijo. Korelacijska matrika za osnovno stanje verige dol\v zine $4$ je kar
-
 \begin{equation}
 	C = \begin{bmatrix} 1 & 1/3 \\ 1/3 & 1\end{bmatrix}
 \end{equation}
+Ostale korelacijske matrike so ve\v cje (za verigo $n = 10$ in $n = 12$) na grafih~\ref{kor1},~\ref{kor2} in~\ref{kor3}.
+
+\begin{figure}[H]\centering
+	\input{korelacija-10-0.tex}
+	\vspace{-32pt}
+	\caption{Spin-spin korelacijska matrika za verigo dol\v zine 10, brez rezanja. Opazimo izrazito blo\v cno
+		obliko, kar sicer ni ni\v c nenavadnega.}
+	\label{kor1}
+\end{figure}
+
+\begin{figure}[H]\centering
+	\input{korelacija-12-0.tex}
+	\vspace{-32pt}
+	\caption{Spin-spin korelacijska matrika za verigo dol\v zine 12, brez rezanja. Opazimo zelo podobno sliko, kot
+		prej. Spet imamo izrazito blo\v cnatost slike. Po barvi vzorca razberemo, da so vrednosti ob diagonali
+		podobne.}
+	\label{kor2}
+\end{figure}
 
 \begin{figure}[H]\centering
 	\input{korelacija-12-8.tex}
+	\vspace{-32pt}
 	\caption{Spin-spin korelacijska matrika za verigo dol\v zine 12, pri \v cemer smo za vsak razcep obdr\v zali
-		najve\v c $M = 8$ Schmidtovih koeficientov. Abscisa in ordinata sta indeks matrike, barvna skala
-		pa prikazuje realni del korelacijske matrike.}
+		najve\v c $M = 8$ Schmidtovih koeficientov. Imeli smo natan\v cnost le na eno decimalno mesto, zaradi
+		\v cesar je korelacijska matrika popa\v cena.}
+	\label{kor3}
 \end{figure}
+
+\subsection{Domenska stena}
+
+Domensko steno sem ra\v cunal za spinsko verigo z 12 spini. Matrike sem sprva rezal tako, da sem zavrgel polovico, tj.
+obdr\v zal najve\v c 32 Schmidtovih koeficientov, saj to sode\v c po tabeli~\ref{tab1} zado\v s\v ca. Temu \v zal ni
+tako -- za propagiranje sem namre\v c uporabljal razli\v cni simplekti\v cni shemi in izka\v ze se, da $S_2$ ni dovolj
+dobra, kar se vidi na sliki~\ref{fail}. Odlo\v cil sem se, da bom obdr\v zal kar vse koeficiente. Rezultat (ki je pravi)
+je na sliki~\ref{bravo}
+
+\begin{figure}[H]\centering
+	\input{profil-12-32.tex}
+	\vspace{-32pt}
+	\caption{Kot vidimo, se vsak spin propagira \v cisto po svoje, ne vidimo nobene simetrije. Vidimo tudi, da so
+		amplitude \v cedalje ve\v cje -- spini so sprva bodisi $-1$, bodisi $1$, potem pa postanejo amplitude
+		ogromne (med $100$ in $-150$.}
+	\label{fail}
+\end{figure}
+
+\begin{figure}[H]\centering
+	\input{profil-12-0.tex}
+	\vspace{-32pt}
+	\caption{Graf je videti dosti bolj organiziran. Takoj opazimo (anti-)simetrijo med levo in desno stranjo.}
+	\label{bravo}
+\end{figure}
+
+Zdaj, ko smo dobili nekak\v sen "`tloris"' problema, poglejmo \v se, projekcijo na \v casovno os, kar ka\v ze
+slika~\ref{spini}.
+
+\begin{figure}[H]\centering
+	\input{spini.tex}
+	\caption{\v Ceprav je graf~\ref{bravo} kazal harmonijo, je ta graf na prvi pogled ne ka\v ze. Imamo namre\v c
+		kar veliko vzbujenih frekvenc. Zanimivo bi bilo videti frekven\v cni spekter za posamezen spin, a
+		pustimo tole za kdaj drugi\v c.}
+	\label{spini}
+\end{figure}
+
 \end{document}
