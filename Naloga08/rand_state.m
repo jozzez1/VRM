@@ -1,13 +1,13 @@
-function v = rand_state (N)
+function v = rand_state (N, complex_flag)
 	% we create two row-vectors
-	v_real = normrnd (0, 3, 1, 4**N);
-	v_imag = normrnd (0, 3, 1, 4**N);
+	v = normrnd (0, 3, 1, 4**N);
 
-	% combine them into one complex vector
-	v = v_real + i*v_imag;
+	if complex_flag == 1
+		v_imag = normrnd (0, 3, 1, 4**N);
+		v += i*v_imag;
+	endif
 
-	% let's normalize it to filter away the
-	% size effects
+	% let's normalize it to filter away the size effects
 	v = v ./ norm (v);
 
 	return;

@@ -1,5 +1,5 @@
 CC=pdflatex
-PRGNAM=joze_zobec_08.tex
+PRGNAM=porocilo.tex
 
 all:
 	$(CC) $(PRGNAM)
