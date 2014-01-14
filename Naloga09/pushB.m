@@ -42,8 +42,18 @@ function [Bnew, Lnew] = pushB (mU, j, B, L, M)
 
 	Lnew{j} = D;
 
-	[nr, nc] = size(L);
-	[Bnew, Lnew] = truncate (Bnew, Lnew, (nc+1)/2, M);
+%	[nr, nc] = size(L);
+
+	[nr, nc] = size(Lnew{j});
+	if (nc > M) && (M > 1)
+		Lnew{j} = diag(diag(Lnew{j})(1:M));
+		Bnew{1,j} = Bnew{1,j}(:,1:M);
+		Bnew{2,j} = Bnew{2,j}(:,1:M);
+		Bnew{1,j+1} = Bnew{1,j+1}(1:M,:);
+		Bnew{2,j+1} = Bnew{2,j+1}(1:M,:);
+	endif
+
+%	[Bnew, Lnew] = truncate (Bnew, Lnew, (nc+1)/2, M);
 
 	return;
 endfunction

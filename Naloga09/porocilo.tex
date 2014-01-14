@@ -2,7 +2,7 @@
 \usepackage[slovene]{babel}
 \usepackage[T1]{fontenc}
 \usepackage[utf8]{inputenc}
-\usepackage{amsmath, amssymb, bbm}
+\usepackage{amsmath, amssymb, bbm, graphicx, float, caption}
 
 \newcommand{\e}{
 	\ensuremath{\mathrm{e}}
@@ -175,24 +175,21 @@ bodisi
 		\rangle,
 \]
 kjer je na\v sa veriga dolga $n = 2m$ spinov. Kateri indeks to predstavlja, \v ce spine uredimo v binarno (npr. $\uparrow$
-predstavlja $1$, in $\downarrow = 0$?). Naj se to zgodi pri indeksu $\Lambda$.
+predstavlja $1$, in $\downarrow = 0$?). Naj se to zgodi pri indeksu $k$.
 
 Definirajmo
 \begin{multline}
-	S_+^{(m)} = \overbrace{11\ldots1}^{m}\overbrace{00\ldots0}^{m}{}_2 = 2^{2m-1} + 2^{m-2} + \ldots + 2^m = \\
+	k_+^{(m)} = \overbrace{11\ldots1}^{m}\overbrace{00\ldots0}^{m}{}_2 = 2^{2m-1} + 2^{m-2} + \ldots + 2^m = \\
 		2^m(1 + 2 + 4 + \ldots + 2^{m-1}) = 2^m (2^m - 1).
 \end{multline}
 
 Zgornji izraz v oklepaju bi potemtakem ustrezal
 \begin{equation}
-	S_-^{(m)} = \overbrace{00\ldots0}^{m}\overbrace{11\ldots1}^{m}{}_2 = 1 + 2 + \ldots + 2^{m-1} = 2^m-1.
+	k_-^{(m)} = \overbrace{00\ldots0}^{m}\overbrace{11\ldots1}^{m}{}_2 = 1 + 2 + \ldots + 2^{m-1} = 2^m-1.
 \end{equation}
 
-Imamo torej dve mo\v znosti, za izbiro osnovnega stanja, ki je
-\[
-	\sum_{\underline{s} = \downarrow}^{\uparrow} |\psi_{\underline{s}}\rangle \delta_{\underline{s}, \Lambda},
-\]
-kjer je $\Lambda \in \{S^{(m)}_+, S^{(m)}_-\}$
+Indeks stanja, $k$, je torej lahko bodisi $k_+$, bodisi $k_-$. Vendar smo tukaj privzeli, da indeksi te\v cejo od $0$ do
+$n-1$. V primeru, \v ce na\v si indeksi te\v cejo od $1$ do $n$, moramo vzeti $k \in \{k_+ + 1, k_- + 1\}$.
 
 Dvodel\v cni \v casovni propagator za feromagnet se napi\v se kot
 \[
@@ -203,6 +200,37 @@ Dvodel\v cni \v casovni propagator za feromagnet se napi\v se kot
 		 &  &  & 1 \end{bmatrix},
 \]
 
-kar je v bistvu $U^{(2)}(\beta \to -it)$.
+kar je v bistvu $U^{(2)}(\beta \to -it)$. Ko simuliramo domensko steno, moramo biti pazljivi. Valovno funkcijo za $n$
+spinov namre\v c predstavimo kot enega izmed baznih vektorjev $2^n$ dimenzionalnega prostora ($j$-ji predstavljajo mo\v zne
+spinske konfiguracije)
+\[
+	\psi = \sum_{j=1}^n\frac{\alpha_j}{|\alpha_k|}\delta_{jk}\hat{e}_j,
+\]
+kjer so $\alpha_j \in \mathbb{C}$ izbrane po Gaussovi porazdelitvi okrog ni\v cle.
+Ker ima slednji veliko ni\v cel, bodo matrike $\mathbf{B}^{(j)}_{s_j}$ in $\lambda^{(j)}$ po MPA imele grdo obliko
+(po poizku\v sanju mi je \texttt{Octave} vra\v cal \texttt{NaN} in \texttt{Inf}), poleg tega, da bomo imeli samo eno
+neni\v celno singularno vrednost. Da se ognemo tem nev\v se\v cnostim, definiramo na\v se stanje kot
+\[
+	\psi = \phi_1 - \phi_2 = \underbrace{\sum_{j = 1}^n\hat{e}_j \frac{\alpha_j}{|\alpha_k|}(1 + \delta_{jk})}_{\phi_1}
+		- \underbrace{\sum_{j=1}^n\hat{e}_j \frac{\alpha_j}{|\alpha_k|}}_{\phi_2}.
+\]
+Tako $\phi_1$ kot $\phi_2$ sta polna vektorja, zato ne bomo imeli problemov z MPA. Spinski profil verige dobimo enostavno
+kot
+\[
+	\langle\psi|\sigma^z_j|\psi\rangle = \langle\phi_1 - \phi_2|\sigma^z_j|\phi_1 - \phi_2\rangle =
+	\langle\phi_1|\sigma^z_j|\phi_1\rangle + \langle\phi_2|\sigma_j^z|\phi_2\rangle - 2\mathrm{Re}\left\{
+	\langle\phi_1|\sigma^z_j|\phi_2\rangle\right\}
+\]
 
+Korelacijska matrika za osnovno stanje verige dol\v zine $4$ je kar
+\begin{equation}
+	C = \begin{bmatrix} 1 & 1/3 \\ 1/3 & 1\end{bmatrix}
+\end{equation}
+
+\begin{figure}[H]\centering
+	\input{korelacija-12-8.tex}
+	\caption{Spin-spin korelacijska matrika za verigo dol\v zine 12, pri \v cemer smo za vsak razcep obdr\v zali
+		najve\v c $M = 8$ Schmidtovih koeficientov. Abscisa in ordinata sta indeks matrike, barvna skala
+		pa prikazuje realni del korelacijske matrike.}
+\end{figure}
 \end{document}

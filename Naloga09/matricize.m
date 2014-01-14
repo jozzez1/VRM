@@ -34,7 +34,7 @@ function [B, L] = matricize (psi, M)
 	end
 
 	% finally we truncate
-	[B, L] = truncate (B, L, n/2, M);
+%	[B, L] = truncate (B, L, n/2, M);
 
 	return;
 endfunction
