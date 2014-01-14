@@ -30,7 +30,8 @@ function [Bnew, Lnew] = pushB (mU, j, B, L, M)
 	Bnew = B;
 	Lnew = L;
 
-	Linv = diag(1 ./ lambda);
+%	Linv = diag(1 ./ lambda);
+	Linv = inv(diag(lambda));
 
 	[nr,nc] = size(U);
 	Bnew{1,j} = Linv * U(1:nr/2,:);
@@ -42,18 +43,15 @@ function [Bnew, Lnew] = pushB (mU, j, B, L, M)
 
 	Lnew{j} = D;
 
-%	[nr, nc] = size(L);
-
+	% and here we truncate
 	[nr, nc] = size(Lnew{j});
-	if (nc > M) && (M > 1)
+	if ((nc > M) && (M > 1))
 		Lnew{j} = diag(diag(Lnew{j})(1:M));
 		Bnew{1,j} = Bnew{1,j}(:,1:M);
 		Bnew{2,j} = Bnew{2,j}(:,1:M);
 		Bnew{1,j+1} = Bnew{1,j+1}(1:M,:);
 		Bnew{2,j+1} = Bnew{2,j+1}(1:M,:);
 	endif
-
-%	[Bnew, Lnew] = truncate (Bnew, Lnew, (nc+1)/2, M);
 
 	return;
 endfunction

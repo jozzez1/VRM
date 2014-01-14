@@ -4,7 +4,7 @@ function C = spin_correlation (B, L, N, M)
 	v = v ./ norm(v);
 	
 	% now we take the new matrices B, L
-	[B, L] = matricize (v, M);
+	[B, L] = matricize (v);
 
 	% and now's the time for the real fun
 	T = matrixT (B, L, N);

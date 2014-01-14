@@ -1,10 +1,10 @@
-function [E, B, L] = energize (v, bmax, number_of_steps, M)
+function [E0, B, L] = energize (v, bmax, number_of_steps, M)
 	[nr, nc] = size(v);
 	N = log2(nc)/2;
 
 	% M is truncation parameter, M > 1
 
-	[B, L] = matricize (v, M);
+	[B, L] = matricize (v);
 
 	bstep = bmax/number_of_steps;
 
@@ -30,6 +30,9 @@ function [E, B, L] = energize (v, bmax, number_of_steps, M)
 
 	report = fopen ("report.dat", "w+");
 	report1= fopen("report1.dat", "w+");
+
+	K = ceil(5/bstep);
+
 	for k = 1:number_of_steps
 
 		[B, L] = fullstep (Uhalf_p1, Ufull_p1, B, L, N, M);
@@ -39,16 +42,19 @@ function [E, B, L] = energize (v, bmax, number_of_steps, M)
 		[B, L] = fullstep (Uhalf_p5, Ufull_p5, B, L, N, M);
 
 		norma = altnorm (B, L, N);
-		b = bstep * k;
-		fprintf (report, "%f\t%f\n", b, log(norma));
-		if b >= 3;
-			fprintf (report1, "%f\t%f\n", b, log(norma));		
+		bet = bstep * k;
+		fprintf (report, "%f\t%f\n", bet, log(norma));
+		if bet >= 5;
+			b(k+1-K) = bet;
+			logN(k+1-K) = log(norma);
+			fprintf (report1, "%f\t%f\n", b(k+1-K), logN(k+1-K));
 		endif
 	end
 	fclose (report);
 	fclose (report1);
 
-	norma = altnorm (B, L, N);
-	E = (-1.0/bmax) * log (norma);
+	[E0, d] = regression (logN, b);
+
+	return;
 	
 endfunction

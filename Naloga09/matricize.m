@@ -1,4 +1,4 @@
-function [B, L] = matricize (psi, M)
+function [B, L] = matricize (psi)
 	% psi is our quantum spin state
 	% 2^n = nc => 2 = log_2 (nc)
 	[nr, nc] = size(psi);
@@ -33,7 +33,7 @@ function [B, L] = matricize (psi, M)
 		B{2,j} = diag(1./diag(L{j-1})) * A{2,j};
 	end
 
-	% finally we truncate
+	% finally we truncate -- commented out: we don't  truncate here
 %	[B, L] = truncate (B, L, n/2, M);
 
 	return;

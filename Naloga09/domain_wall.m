@@ -2,8 +2,8 @@ function domain_wall (N, tmax, steps, M)
 
 	[v1, v2] = domain_states (N, 1);
 
-	[B1, L1] = matricize (v1, M);
-	[B2, L2] = matricize (v2, M);
+	[B1, L1] = matricize (v1);
+	[B2, L2] = matricize (v2);
 
 	domain = fopen ("domain.txt", "w+");
 	prof = fopen ("profile.txt", "w+");
