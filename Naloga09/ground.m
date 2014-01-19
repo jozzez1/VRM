@@ -1,6 +1,6 @@
 function [E0, u] = ground (V, E, rmin, rmax, N)
-	E1 = E-2;
-	E2 = E+2;
+	E1 = -15;
+	E2 = 0.02;
 
 	u1 = numerov (V, E1, rmin, rmax, N);
 	u2 = numerov (V, E2, rmin, rmax, N);
@@ -18,9 +18,10 @@ function [E0, u] = ground (V, E, rmin, rmax, N)
 			E1 = E3;
 			u1 = u3;
 		elseif u1(N)*u2(N) > 0
+			printf ("Edjusting zero intervals ... Counter = %d\n", counter);
 			while u1(N)*u2(N) > 0
-				E1 += 0.001;
-				u1 = numerov (V, E1, rmin, rmax, N);
+				E2 -= 0.001;
+				u2 = numerov (V, E2, rmin, rmax, N);
 			endwhile
 		else
 			printf ("Error!\nCounter = %d\n", counter);
@@ -30,8 +31,18 @@ function [E0, u] = ground (V, E, rmin, rmax, N)
 		counter++;
 	endwhile
 
-	E0 = E1;
-	u  = u1;
+	if abs(u1(N)) < abs(u2(N))
+		u = u1;
+		E0 = E1;
+	else
+		u = u2;
+		E0 = E2;
+	endif
+
+	if (abs(u3(N)) < abs(u(N)))
+		u = u3;
+		E0 = E3;
+	endif
 
 	return;
 endfunction
