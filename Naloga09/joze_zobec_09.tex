@@ -80,8 +80,9 @@ je ta nabor koeficientov dober samo za potencial $V(r) = -1/r$. Za splo\v sen po
 $V(r_i) = V_i$ tega ne moremo narediti, razen \v ce tudi za potencial naredimo polinomsko interpolacijo prek
 to\v ck, prav tako do reda $\mathcal{O}(h^6)$. Ker se bo potencial iterativno spreminjal, bodo koeficienti
 $c_k$ \v ze takoj po prvi iteraciji postali "`slabi"'. Zaradi tega, bomo obliko osnovnega stanja izra\v cunali
-kar z metodo Runge-Kutta reda 4 (v nadaljevanju RK4) z adaptivnim korakom. Koeficienti integratorja
-$k_2$ in $k_3$ zahtevajo poznavanje $V_{i+1/2}$, ki ga dobimo z aproksimacijo $V_{i+1/2} =
+kar z metodo Runge-Kutta reda 4 (v nadaljevanju RK4) z adaptivnim korakom. Za za\v cetni pogoj vzamemo $u_0 = 0$,
+$u'_0$ pa je lahko karkoli, (vpliva le na $u_1$, ki pa ga dolo\v cimo po integraciji z normalizacijo). Koeficienti
+integratorja $k_2$ in $k_3$ zahtevajo poznavanje $V_{i+1/2}$, ki ga dobimo z aproksimacijo $V_{i+1/2} =
 (V_i + V_{i+1})/2 + \mathcal{O}(h^2)$, vendar nas to ne bo motilo.
 
 Ko imamo obliko osnovnega stanja za neko energijo $E$, jo lahko izra\v cunamo s pomo\v cjo strelske metode
@@ -123,5 +124,9 @@ $N\times N$ potrebujejo $\mathcal{O}(N)$ operacij, kar je bolj u\v cinkovito, ko
 	U(r) = \int \frac{\d k}{2\pi} \int \d r' \frac{1}{k^2} \e^{-ik(r - r')} \frac{u^2(r')}{r'},
 \]
 ki ima ob uporabi FFT zahtevnost $\mathcal{O}(N\log N)$.
+
+Kot pi\v se v skripti, moramo na koncu dodati \v se homogeno
+re\v sitev, da upo\v stevamo robni pogoj, $U(r) \to U(r) + kr$, kjer je zelo pomembno, da je na\v se stanje pravilno
+normirano: $|u| = \sqrt{N/r_\text{max}}$.
 
 \end{document}

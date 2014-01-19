@@ -32,7 +32,7 @@ function unew = rk4 (V, E, rmax, N)
 	end
 
 	% u(r) must be normalized the integral sense
-	unew = sqrt(N) * unew ./ norm(unew);
+	unew = sqrt(N/(rmax - 1e-5)) * unew ./ norm(unew);
 
 	return;
 endfunction
