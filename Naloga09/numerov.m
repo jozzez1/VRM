@@ -1,13 +1,11 @@
-function u = numerov (V, E, rmax, N)
+function u = numerov (V, E, rmin, rmax, N)
 	% initial conditions
 	u(1) = 0;
-	u(2) = 0.1;
-
-	V(1) = 0;
+	u(2) = 1;
 
 	% ok ... we set some parameters
-	f = 2 * (V .- E);
-	h = rmax/N;
+	f = 2 * (E .- V);
+	h = (rmax - rmin)/N;
 
 	% and here we do the iteration ...
 	for k = 2:N-1
@@ -17,7 +15,7 @@ function u = numerov (V, E, rmax, N)
 	end
 
 	u = u ./ norm(u);
-	u *= sqrt(N/rmax);
+	u *= sqrt(N/(rmax - rmin));
 
 	return;
 endfunction

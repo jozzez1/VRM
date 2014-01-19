@@ -1,5 +1,5 @@
-function L = mLaplace (rmax, N)
-	h = rmax / N;
+function L = mLaplace (rmin, rmax, N)
+	h = (rmax - rmin) / N;
 	L = 0;	
 	L += diag ((-49/18) * ones(1,N));
 	L += diag (1.5 * ones(1,N-1), 1);
