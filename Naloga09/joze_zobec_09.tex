@@ -1,0 +1,127 @@
+\documentclass[12pt, a4 paper]{article}
+\usepackage[slovene]{babel}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath, amssymb, bbm, graphicx, float, caption}
+
+\captionsetup{
+	width=0.7\textwidth,
+	labelfont=it,
+	size=small
+}
+
+\renewcommand{\d}{
+	\ensuremath{\mathrm{d}}
+}
+
+\newcommand{\e}{
+	\ensuremath{\mathrm{e}}
+}
+
+\newcommand{\err}{
+	\operatorname{err}
+}
+
+\newcommand{\V}{
+	\ensuremath{V^\text{eff}}
+}
+
+\begin{document}
+
+\begin{center}
+\textsc{Vi\v sje ra\v cunske metode}\\
+\textsc{2012/13}\\[0.5cm]
+\textbf{9. naloga -- algoritem DFT}
+\end{center}
+\begin{flushright}
+\textbf{Jo\v ze Zobec}
+\end{flushright}
+
+\section{Uvod}
+
+Schroedingerjeva ena\v cba, ki jo bomo re\v sevali je
+\[
+	\bigg[-\frac{1}{2}\frac{\d^2}{\d r^2} + V(r) + \frac{\ell(\ell+1)}{r^2} - E\bigg]u(r) = 0,
+\]
+kjer je $u(r) = r\psi(r)$ in $\ell \equiv 0$ ($\psi$ je valovna funkcija, ki je za $\ell = 0$ radialno simetri\v cna, tj.
+$\psi = \psi(r)$). \v Ce jo napi\v semo nekoliko druga\v ce, dobimo
+\begin{equation}
+	\bigg[\frac{\d^2}{\d r^2} + 2\Big(E - V(r)\Big)\bigg]u(r) = 0.
+\end{equation}
+Osnovno stanje Schr\" odingerjeve ena\v cbe bomo iskali s pomo\v cjo metode Numerova. Potrebujemo $u(r=0) = u_0$ in
+$u (r = h) = u_1$, ki ga izra\v cunamo s pomo\v cjo razvoja v Taylorjevo vrsto z nastavkom
+\[
+	u(r) = \sum_{k = 1}^{\infty} c_k r^k.	
+\]
+Konstantni \v clen manjka, saj mora biti $\phi_1 = u(r)/r \in L^2$ normalizabilna. \v Ce uporabimo potencial 
+$V(r) = -1/r$ in $u(r)$ razvijemo do petega reda (kot je tudi metoda Numerova -- ujemati se mora v
+natan\v cnosti) dobimo rekurzijsko shemo
+\[
+	c_{k+1} = -\frac{2}{k(k+1)}(c_k + Ec_{k-1}),
+\]
+z za\v cetnimi pogoji $c_2 = -c_1$. Koeficienti so prikazani v tabeli~\ref{tab:koef}
+\begin{table}[H]\centering
+	\caption{Koeficienti za primer $V(r) = -1/r$ in $\ell = 0$ za Taylorjev razvoj $u(r)$ do reda
+	$\mathcal{O}(h^6)$}
+	\vspace{6pt}
+	\begin{tabular}{c|l}
+		$k$ & $c_k/c_1$ \\
+		\hline
+		$1$ & $1$ \\
+		$2$ & $-1$ \\
+		$3$ & $\frac{1}{3}(1 - E)$ \\
+		$4$ & $\frac{1}{18}(4E - 1)$ \\
+		$5$ & $-\frac{1}{30}(E^2 - \frac{1}{3}E - \frac{1}{6})$
+	\end{tabular}
+	\label{tab:koef}
+\end{table}
+S temi koeficienti lahko potem izra\v cunamo $u_0$ in $u_1$, ostale vrednosti pa prek metode Numerova. Vendar pa
+je ta nabor koeficientov dober samo za potencial $V(r) = -1/r$. Za splo\v sen potencial, podan v obliki
+$V(r_i) = V_i$ tega ne moremo narediti, razen \v ce tudi za potencial naredimo polinomsko interpolacijo prek
+to\v ck, prav tako do reda $\mathcal{O}(h^6)$. Ker se bo potencial iterativno spreminjal, bodo koeficienti
+$c_k$ \v ze takoj po prvi iteraciji postali "`slabi"'. Zaradi tega, bomo obliko osnovnega stanja izra\v cunali
+kar z metodo Runge-Kutta reda 4 (v nadaljevanju RK4) z adaptivnim korakom. Koeficienti integratorja
+$k_2$ in $k_3$ zahtevajo poznavanje $V_{i+1/2}$, ki ga dobimo z aproksimacijo $V_{i+1/2} =
+(V_i + V_{i+1})/2 + \mathcal{O}(h^2)$, vendar nas to ne bo motilo.
+
+Ko imamo obliko osnovnega stanja za neko energijo $E$, jo lahko izra\v cunamo s pomo\v cjo strelske metode
+tako, da $u(r_\text{max}) = 0$. Zelo hitro lahko pademo v podro\v cje sipalnih stanj (\v ce uporabljamo strelsko
+metodo), zato bomo raje delali z bisekcijo, ki pa je bolj ra\v cunsko zahtevna.
+
+Integrator, ki re\v suje Poissonovo ena\v cbo bomo naredili tako, da bomo drugi odvod $U''(r_i)$
+aproksimirali s kon\v cnimi diferencami
+\[
+	\frac{\d^2}{\d r^2} U(r)\Big|_{r = r_i} = \frac{U_{i+1} + U_{i-1} - 2U_i}{h^2},
+\]
+vendar je ta izraz natan\v cen le z napako $\mathcal{O}(h^2)$, RK4 od prej, pa je ima nata\v cnost
+$\mathcal{O}(h^5)$. Uporabili bomo raje shemo s primerljivo nata\v cnostjo -- simetri\v cno shemo $\mathcal{O}
+(h^6)$, ki se glasi
+\begin{equation}
+	h^2 U''_i \approx \frac{1}{90}(U_{i+3} + U_{i-3}) - \frac{3}{20} (U_{i+2} + U_{i-2}) + \frac{3}{2}(U_{i+1}
+		+ U_{i-1}) - \frac{49}{18}U_i
+\end{equation}
+V tem prepoznamo mno\v zenje vektorja $\underline{U}$ z matriko $L$, tj.
+\begin{equation}
+	\underline{U}'' \approx L\underline{U},\ L = \frac{1}{h^2}\begin{bmatrix}
+		-49/18 & 3/2 & -3/20 & 1/90 & 0 & \ldots & 0 \\
+		3/2 & \ddots & \ddots & \ddots & \ddots & \\
+		-3/20 & \ddots & & & & \\
+		1/90 & \ddots & & & & \\
+		0 & \ddots & & & & \\
+		\vdots & & & & & \\
+		0 & & & & &
+		\end{bmatrix},
+\end{equation}
+tj. pasata matrika, s tremi sub- in tremi super-diagonalami. Da dobimo $\underline{U}$ moramo re\v siti
+sistem
+\begin{equation}
+	L_{ij} U_j = y_i,\quad y_i = -u_i^2/r_i.
+\end{equation}
+Za re\v sevanje takega sistema obstajajo u\v cinkoviti algoritmi, ki pa jih ne bi omenjal. Za matriko dimenzije
+$N\times N$ potrebujejo $\mathcal{O}(N)$ operacij, kar je bolj u\v cinkovito, kot \v ce bi re\v sevali npr.
+\[
+	U(r) = \int \frac{\d k}{2\pi} \int \d r' \frac{1}{k^2} \e^{-ik(r - r')} \frac{u^2(r')}{r'},
+\]
+ki ima ob uporabi FFT zahtevnost $\mathcal{O}(N\log N)$.
+
+\end{document}
